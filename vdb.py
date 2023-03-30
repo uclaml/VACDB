@@ -1,0 +1,188 @@
+import numpy as np
+import matplotlib
+import scipy.special
+import scipy.spatial
+import scipy.optimize
+
+matplotlib.rcParams["text.usetex"] = True
+import matplotlib.pyplot as plt
+
+rng = np.random.default_rng(555)
+mu = scipy.special.expit
+dtype = np.float32
+
+T = 1_000
+delta = 1.0 / T
+d = 4
+sigma_0 = 1.0 / 4
+L = int(np.ceil(1.0 / 2 / sigma_0))
+lmbda = 10
+kappa = 0.1
+L_mu = 0.25
+M_mu = 0.25
+K = 4
+
+theta_star = rng.random((d,), dtype=dtype)
+theta_star = theta_star / np.sqrt(theta_star @ theta_star)
+x_orig = rng.integers(0, 2**d, size=(K,), dtype=np.int32)
+cA = ((x_orig.reshape(-1, 1) & (2 ** np.arange(d))) != 0) * 2.0 - 1.0
+# cA *= 10
+
+
+class VALDB:
+    def __init__(self) -> None:
+        self.theta = np.ones((L + 1, d), dtype=dtype)
+        self.V = np.zeros((L + 1, d, d), dtype=dtype) + np.eye(d) * lmbda
+        self.Vinv = (
+            1.0 / lmbda * np.zeros((L + 1, d, d), dtype=dtype) + np.eye(d) / lmbda
+        )
+        self.xy_diff = [np.zeros((0, d), dtype=dtype) for _ in range(L + 1)]
+        self.r = [np.array([], dtype=dtype) for _ in range(L + 1)]
+        self.R = np.zeros((T + 1), dtype=dtype)
+
+    def MLE(self, l: int) -> None:
+        theta_0 = self.theta[l]
+        mu_x = lambda theta: mu(self.xy_diff[l] @ theta)
+        mu_p_x = (
+            lambda theta: np.exp(self.xy_diff[l] @ theta)
+            / (np.exp(self.xy_diff[l] @ theta) + 1) ** 2
+        )
+        func = lambda theta: (
+            kappa * lmbda * theta @ theta
+            - (
+                self.r[l] * np.log(mu_x(theta))
+                + (1 - self.r[l]) * np.log(1 - mu_x(theta))
+            ).sum(axis=0)
+        )
+        grad = lambda theta: (
+            2 * kappa * lmbda * theta
+            - (
+                (
+                    mu_p_x(theta)
+                    * (self.r[l] - mu_x(theta))
+                    / (1 - mu_x(theta))
+                    / mu_x(theta)
+                ).reshape(-1, 1)
+                * self.xy_diff[l]
+            ).sum(axis=0)
+        )
+        # a = grad(theta_0)
+        res = scipy.optimize.minimize(
+            func,
+            theta_0,
+            jac=grad,
+            method="BFGS",
+            options={"disp": False, "gtol": 1e-06},
+        )
+        self.theta[l] = res.x
+        # print(grad(res.x))
+        return None
+
+    def main(self) -> None:
+        pp = mu(cA @ theta_star)
+        x_star_idx = np.argmax(pp)
+        print(x_star_idx, "x_star")
+        g_xy_diff = cA.reshape(K, 1, d) - cA.reshape(1, K, d)
+        g_xy_diff_outer = g_xy_diff.reshape(K, K, d, 1) @ g_xy_diff.reshape(K, K, 1, d)
+        p = mu(g_xy_diff @ theta_star)
+        # sanity check
+        for i in range(K):
+            for j in range(K):
+                assert np.all(g_xy_diff[i, j] == cA[i] - cA[j])
+                assert np.all(
+                    g_xy_diff_outer[i, j] == np.outer(cA[i] - cA[j], cA[i] - cA[j])
+                )
+                assert p[i, j] == mu(cA[i] @ theta_star - cA[j] @ theta_star)
+        print(p)
+        print(cA)
+        print(theta_star)
+
+        var = np.ones((L + 1, K, K), dtype=dtype)
+        cPsi = np.zeros((L + 1))
+        for l in range(L + 1):
+            var[l] = np.sqrt(
+                (g_xy_diff.reshape(K, K, 1, d) @ self.Vinv[l])
+                @ g_xy_diff.reshape(K, K, d, 1)
+            ).reshape(K, K)
+        D = np.ones((L, K), dtype=dtype)
+        for t in range(1, 1 + T):
+            Dt = D.sum(axis=0) == L
+            # assert np.any(Dt)
+
+            mask = Dt.reshape(-1, 1) * Dt.reshape(1, -1)
+            x_i, y_i = np.unravel_index(
+                np.argmax(mask * var[:L].min(axis=0), axis=None), (K, K)
+            )
+            x_i = rng.integers(0, K)
+            y_i = rng.integers(0, K)
+            x = cA[x_i]
+            y = cA[y_i]
+            xy_diff = x - y
+            r = rng.binomial(1, p[x_i, y_i])
+            self.R[t] = (2 * cA[x_star_idx] - x - y) @ theta_star + self.R[t - 1]
+
+            self.xy_diff[L] = np.vstack([self.xy_diff[L], xy_diff])
+            self.r[L] = np.append(self.r[L], r)
+            self.MLE(L)
+            p_hat = mu(self.theta[L] @ xy_diff).reshape((1,))
+            b_t = (
+                np.sqrt(xy_diff.reshape(1, d) @ self.Vinv[L] @ xy_diff.reshape(d, 1))
+                * L_mu
+                * (
+                    1.0 / kappa * np.sqrt(d * np.log(1 / delta + t / lmbda / delta))
+                    + np.sqrt(lmbda)
+                )
+            ).reshape((1,))
+            b_t *= 0.1
+            hat_sigma_t = np.sqrt(p_hat * (1 - p_hat) + b_t + b_t**2)
+
+            l = np.ceil(np.log2(hat_sigma_t / sigma_0)).astype(np.int32)[0]
+            l = np.clip(l, 1, L) - 1
+            l = rng.integers(0, L)
+            cPsi[l] += 1
+            cPsi[L] += 1
+            # print(hat_sigma_t, l, b_t, x_i, y_i)
+
+            self.V[l] += g_xy_diff_outer[x_i, y_i]
+            self.V[L] += g_xy_diff_outer[x_i, y_i]
+            self.Vinv[l] = np.linalg.inv(self.V[l])
+            self.Vinv[L] = np.linalg.inv(self.V[L])
+            eta_tl = (
+                16
+                * (2**l)
+                * sigma_0
+                / kappa
+                * np.sqrt(
+                    d * np.log(1 + cPsi[l] / d / lmbda) * np.log(4 * cPsi[l] / delta)
+                )
+            )
+            +4 / kappa * np.log(4 * (cPsi[l] ** 2) / delta)
+            eta_tl *= 0.001
+            var[l] = np.sqrt(
+                (g_xy_diff.reshape(K, K, 1, d) @ self.Vinv[l])
+                @ g_xy_diff.reshape(K, K, d, 1)
+            ).reshape(K, K)
+            # print(var[l])
+            # for i in range(K):
+            #     for j in range(K):
+            #         assert (var[l][i, j] - np.sqrt(g_xy_diff[i, j] @ self.Vinv[l] @ g_xy_diff[i, j])) < 1e-6
+            ucb = g_xy_diff @ self.theta[l] + eta_tl * var[l]
+            # print(ucb, eta_tl)
+            cond = ucb.reshape(K, K) >= 0
+            D[l] = cond.sum(axis=1) == K
+
+            self.xy_diff[l] = np.vstack([self.xy_diff[l], xy_diff])
+            self.r[l] = np.append(self.r[l], r)
+            self.MLE(l)
+            print(f"{t}", end="\r")
+
+
+v = VALDB()
+v.main()
+np.set_printoptions(precision=6, suppress=True)
+print(v.theta)
+print("----------")
+print(theta_star)
+print(np.linalg.norm(v.theta - theta_star, axis=1))
+# plt.plot(v.R[1:])
+# plt.show()
