@@ -4,30 +4,37 @@ import scipy.special
 import scipy.spatial
 import scipy.optimize
 
-matplotlib.rcParams["text.usetex"] = True
+# must have latex suite installed in system to enable
+# matplotlib.rcParams["text.usetex"] = True
 import matplotlib.pyplot as plt
 
-rng = np.random.default_rng(233)
+import sys
+if len(sys.argv) == 2:
+    seed = int(sys.argv[1])
+else:
+    seed = 123
+print("seed", seed)
+rng = np.random.default_rng(seed)
 mu = scipy.special.expit
 dtype = np.float64
 
-T = 1000
+T = 5000
 delta = 1.0 / T
-d = 3
-sigma_0 = 1.0 / 1
-L = int(np.ceil(1.0 / 2 / sigma_0))
-lmbda = 0.01
+d = 4
+sigma_0 = 1.0 / (2 ** 5)
+L = int(np.ceil(np.log2(1.0 / 2 / sigma_0)))
+lmbda = 0.001
 kappa = 0.1
 L_mu = 0.25
 M_mu = 0.25
-K = 8
+K = 32
 
 theta_star = rng.random((d,), dtype=dtype)
 theta_star = theta_star / np.sqrt(theta_star @ theta_star)
 x_orig = rng.integers(0, 2**d, size=(K,), dtype=np.int32)
 cA = ((x_orig.reshape(-1, 1) & (2 ** np.arange(d))) != 0) * 2.0 - 1.0
-cA += rng.random(cA.shape)
-cA = rng.random((K, d)) - 1
+cA += rng.random(cA.shape) - 1
+# cA = rng.random((K, d)) - 1
 
 
 class VALDB:
@@ -61,8 +68,8 @@ class VALDB:
         )
 
         # gradient descent
-        for _ in range(20):
-            theta_0 -= 0.00001 * grad(theta_0)
+        for _ in range(50):
+            theta_0 -= 0.0001 * grad(theta_0)
         self.theta[l] = theta_0
         # print(theta_0)
 
@@ -72,7 +79,7 @@ class VALDB:
         #     theta_0,
         #     jac=grad,
         #     method="BFGS",
-        #     options={"disp": True, "gtol": 1e-06},
+        #     options={"disp": False, "gtol": 1e-04},
         # )
         # self.theta[l] = res.x
         # print(res.x)
@@ -113,25 +120,24 @@ class VALDB:
             Lvar = var + 1
             sel = mask * Lvar.min(axis=0)
             x_i, y_i = np.unravel_index(
-                np.argmax(1 * Lvar.min(axis=0), axis=None), (K, K)
+                np.argmax(mask * Lvar.min(axis=0), axis=None), (K, K)
             )
-            if (x_i, y_i) == (1, 15):
+            if (x_i, y_i) == (2, 14):
                 pass
-            x_i = rng.integers(0, K)
-            y_i = rng.integers(0, K)
+            # x_i = rng.integers(0, K)
+            # y_i = rng.integers(0, K)
             x = cA[x_i]
             y = cA[y_i]
             xy_diff = x - y
             r = rng.binomial(1, p[x_i, y_i])
             self.R[t] = (2 * cA[x_star_idx] - x - y) @ theta_star + self.R[t - 1]
-            self.V[l] += g_xy_diff_outer[x_i, y_i]
             self.V[L] += g_xy_diff_outer[x_i, y_i]
-            self.Vinv[l] = np.linalg.inv(self.V[l])
             self.Vinv[L] = np.linalg.inv(self.V[L])
-
             self.xy_diff[L] = np.vstack([self.xy_diff[L], xy_diff])
             self.r[L] = np.append(self.r[L], r)
+            cPsi[L] += 1
             self.MLE(L)
+
             p_hat = mu(self.theta[L] @ xy_diff).reshape((1,))
             b_t = (
                 np.sqrt(xy_diff.reshape(1, d) @ self.Vinv[L] @ xy_diff.reshape(d, 1))
@@ -141,17 +147,19 @@ class VALDB:
                     + np.sqrt(lmbda)
                 )
             ).reshape((1,))
-            b_t *= 0.05
-            bar_sigma_t = np.sqrt(p_hat * (1 - p_hat) + b_t + b_t**2)
+            b_t *= 0.01
+            # bar_sigma_t = np.sqrt(p_hat * (1 - p_hat) + b_t + b_t**2)
+            bar_sigma_t = np.sqrt(p_hat * (1 - p_hat) + 2 * b_t)
 
             l = np.ceil(np.log2(bar_sigma_t / sigma_0)).astype(np.int32)[0]
             l = np.clip(l, 1, L) - 1
             # l = rng.integers(0, L)
-            cPsi[l] += 1
-            cPsi[L] += 1
-            print(bar_sigma_t, l, b_t, x_i, y_i)
+            # print((p_hat * (1 - p_hat)), l, b_t, x_i, y_i)
+            self.V[l] += g_xy_diff_outer[x_i, y_i]
+            self.Vinv[l] = np.linalg.inv(self.V[l])
             self.xy_diff[l] = np.vstack([self.xy_diff[l], xy_diff])
             self.r[l] = np.append(self.r[l], r)
+            cPsi[l] += 1
             self.MLE(l)
 
             eta_tl = (
@@ -166,7 +174,7 @@ class VALDB:
                 )
             )
             +4 / kappa * np.log(4 * (cPsi[l] ** 2) / delta)
-            eta_tl *= 1
+            eta_tl *= 0.005
             var[l] = np.sqrt(
                 (g_xy_diff.reshape(K, K, 1, d) @ self.Vinv[l])
                 @ g_xy_diff.reshape(K, K, d, 1)
@@ -197,4 +205,6 @@ print("layer sample", Psi)
 print(np.linalg.norm(v.theta - theta_star, axis=1))
 
 plt.plot(v.R[1:])
-plt.show()
+np.savez(f"data/R{seed:03d}")
+# plt.show()
+plt.savefig(f"data/fig{seed:03d}.png")
