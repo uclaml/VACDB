@@ -2,7 +2,7 @@ import sys
 from model import LinearLogitModel
 from vdb import VDBGLM
 from ucb import MaxInp, MaxFirstUCBNext, MaxFirstRndNext
-
+from suplin import AdaDBGLM, SAVE
 
 class RND(VDBGLM):
     def next_action(self):
@@ -38,8 +38,8 @@ if __name__ == "__main__":
         # MaxPairUCB2,
         # MaxPairUCB,
         VDBGLM,
-        # SAVE,
-        # AdaDBGLM,
+        SAVE,
+        AdaDBGLM,
     ]
     for alg_cls in alg_classes:
         model = LinearLogitModel(T, K, d, seed)
