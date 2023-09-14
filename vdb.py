@@ -9,6 +9,7 @@ import scipy.optimize
 # matplotlib.rcParams["text.usetex"] = True
 import matplotlib.pyplot as plt
 
+from model import LinearLogitModel, Model
 
 dtype = np.float64
 
