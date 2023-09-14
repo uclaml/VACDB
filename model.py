@@ -6,6 +6,7 @@ import scipy.optimize
 
 dtype = np.float64
 
+
 class Model(ABC):
     def __init__(self) -> None:
         pass
@@ -29,6 +30,7 @@ class LinearLogitModel(Model):
         self.T = T
         self.K = K
         self.d = d
+        self.seed = seed
         self.rng = np.random.default_rng(seed)
         self.mu = scipy.special.expit
         # self.R = np.zeros((T + 1), dtype=dtype)
@@ -39,7 +41,7 @@ class LinearLogitModel(Model):
         # generate a random ground truth parameter and normalize it
         theta_star = self.rng.random((d,), dtype=dtype)
         theta_star = (theta_star > 0.5).astype(np.int64) * 2.0 - 1
-        
+
         self.theta_star = theta_star / np.sqrt(theta_star @ theta_star)
         # self.theta_star *= scale
         # print(self.theta_star)
@@ -54,9 +56,9 @@ class LinearLogitModel(Model):
         # norm_samples /= np.sqrt(np.sum(norm_samples ** 2, axis=1))
         # rad_1 = 0
         # rad_2 = 1. / np.sqrt(d)
-        # scale = (self.rng.uniform(rad_1, rad_2, size=(1, )) ** (1./d)) 
+        # scale = (self.rng.uniform(rad_1, rad_2, size=(1, )) ** (1./d))
         # self.theta_star = (norm_samples * scale).reshape(d)
-    
+
         cA = (
             (x_orig.reshape(-1, 1) & (2 ** np.arange(d))) != 0
         ) * 2.0 - 1.0  # convert to binary vectors
@@ -65,7 +67,6 @@ class LinearLogitModel(Model):
         # cA = self.rng.random((K, d)) - 0.5 # completely random
         self.cA = cA
         # self.cA = self.rng.uniform(0, 1, size=(K, d))
-
 
         g_z = cA.reshape(K, 1, d) - cA.reshape(1, K, d)
         self.g_z_outer = g_z.reshape(K, K, d, 1) @ g_z.reshape(K, K, 1, d)

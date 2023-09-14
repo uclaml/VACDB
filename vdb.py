@@ -1,5 +1,4 @@
 import sys, os
-from abc import ABC, abstractmethod
 import numpy as np
 import scipy.special
 import scipy.spatial
@@ -9,128 +8,10 @@ import scipy.optimize
 # matplotlib.rcParams["text.usetex"] = True
 import matplotlib.pyplot as plt
 
-from model import LinearLogitModel, Model
+from model import Model
+from db import DB
 
 dtype = np.float64
-
-
-class Model(ABC):
-    def __init__(self) -> None:
-        pass
-
-    @abstractmethod
-    def action(self, act):
-        raise NotImplementedError
-
-    # @abstractmethod
-    # def step(self):
-    #     """
-    #     sometimes the environment changes adversarily
-    #     """
-    #     raise NotImplementedError
-
-
-class LinearLogitModel(Model):
-    def __init__(self, T, K, d, seed, scale=1) -> None:
-        super().__init__()
-
-        self.T = T
-        self.K = K
-        self.d = d
-        self.rng = np.random.default_rng(seed)
-        self.mu = scipy.special.expit
-        # self.R = np.zeros((T + 1), dtype=dtype)
-        self.R = []
-        self.error = []
-
-        # generate a random ground truth parameter and normalize it
-        theta_star = self.rng.random((d,), dtype=dtype)
-        self.theta_star = theta_star / np.sqrt(theta_star @ theta_star)
-        self.theta_star *= scale
-
-        # generate feature vectors for arms
-        # it is random binary vectors with disturbance
-        x_orig = self.rng.integers(0, 2**d, size=(K,), dtype=np.int32)  # [0, 2^d)
-        # cA[0:K//4] += rng.random((K//4, d)) * 2
-        cA = (
-            (x_orig.reshape(-1, 1) & (2 ** np.arange(d))) != 0
-        ) * 2.0 - 1.0  # convert to binary vectors
-        cA += (self.rng.random(cA.shape) - 1) / 10  # add some disturb with mean 0
-        # cA = self.rng.random((K, d)) - 0.5 # completely random
-        self.cA = cA
-
-        g_z = cA.reshape(K, 1, d) - cA.reshape(1, K, d)
-        self.g_z_outer = g_z.reshape(K, K, d, 1) @ g_z.reshape(K, K, 1, d)
-        self.p = self.mu(g_z @ self.theta_star)
-        self.g_z = g_z
-        # sanity check
-        # for i in range(K):
-        #     for j in range(K):
-        #         assert np.all(g_z[i, j] == cA[i] - cA[j])
-        #         assert np.all(
-        #             g_z_outer[i, j] == np.outer(cA[i] - cA[j], cA[i] - cA[j])
-        #         )
-        #         assert (p[i, j] - mu(cA[i] @ theta_star - cA[j] @ theta_star)) < 1e-10
-        # print(p)
-        # print(cA)
-        # print(theta_star)
-
-        u = self.mu(self.cA @ self.theta_star)
-        self.x_star_idx = np.argmax(u)
-
-    def action(self, t, act):
-        x_i, y_i = act
-        r = self.rng.binomial(1, self.p[x_i, y_i])
-        x = self.cA[x_i]
-        y = self.cA[y_i]
-
-        # if the regret depends on link function the strategy can be differ?
-        # lipschtizness
-        # self.R[t] = (2 * self.cA[self.x_star_idx] - x - y) @ self.theta_star + self.R[
-        #     t - 1
-        # ]
-        R_t = (2 * self.cA[self.x_star_idx] - x - y) @ self.theta_star
-        if len(self.R):
-            self.R.append(R_t + self.R[-1])
-        else:
-            self.R.append(R_t)
-        return r
-
-    def record_error(self, theta):
-        self.error.append(np.linalg.norm(self.theta_star - theta) / self.d)
-
-
-class DB(ABC):
-    def __init__(self, T: int, model: Model, seed: int) -> None:
-        self.rng = np.random.default_rng(seed)
-        self.model = model
-        self.T = T
-
-    def run(self):
-        """
-        main loop
-        """
-        for t in range(1, 1 + self.T):
-            self.t = t
-            # model can also change
-            act = self.next_action()
-            r = self.model.action(t, act)
-            self.estimate(r, act)
-            self.model.record_error(self.theta[-1])
-
-    @abstractmethod
-    def next_action(self):
-        """
-        according to the current estimate, using predefined strategy generate a new query/action to perform
-        """
-        pass
-
-    @abstractmethod
-    def estimate(self, r):
-        """
-        updates model estimation based on new observation and the past
-        """
-        pass
 
 
 class VDBGLM(DB):
@@ -179,6 +60,8 @@ class VDBGLM(DB):
 
         self.D = np.ones((L, K), dtype=dtype)  # feasible set
         self.Psi = np.zeros((L + 1))  # sample count in each layer
+
+        self.count = np.zeros((K, K))
 
     def update_stats(self, l, z, r):
         self.V[l] += np.outer(z, z)
@@ -257,14 +140,13 @@ class VDBGLM(DB):
         # for i in range(K):
         #     for j in range(K):
         #         assert (var[l][i, j] - np.sqrt(g_z[i, j] @ self.Vinv[l] @ g_z[i, j])) < 1e-6
+
         ucb = self.g_z @ self.theta[l] + eta_tl * self.var[l]
         # print(ucb, eta_tl)
         cond = ucb.reshape(K, K) >= 0
         self.D[l] = (
             cond.sum(axis=1) == K
         )  # only ucb >= for all opponent arms is selected
-
-        print(f"{t}", end="\r")
 
     def MLE(self, l: int = 0) -> None:
         theta_0 = self.theta[l]
@@ -302,8 +184,12 @@ class VDBGLM(DB):
             options={"disp": False, "gtol": 1e-04},
         )
         self.theta[l] = res.x
+        # print(theta_0)
+        # print(res.x)
+        # print('-------------------------------')
 
     def next_action(self) -> None:
+        K = self.K
         Dt = self.D.sum(axis=0) == self.L
         assert np.any(
             Dt
@@ -311,13 +197,14 @@ class VDBGLM(DB):
 
         mask = Dt.reshape(-1, 1) * Dt.reshape(1, -1)
         Lvar = self.var + 1
-        sel = mask * Lvar.min(axis=0)
+        # sel = mask * Lvar.min(axis=0)
         x_i, y_i = np.unravel_index(
             np.argmax(mask * Lvar.min(axis=0), axis=None), (K, K)
         )
         return x_i, y_i
 
     def summarize(self):
+        seed = self.model.seed
         np.set_printoptions(precision=6, suppress=True)
         print("--Ground Truth-------")
         print(self.model.theta_star)
@@ -347,82 +234,19 @@ class VDBGLM(DB):
 
         # Adjust spacing between subplots
         plt.tight_layout()
-        output_dir = f"data"
+        output_dir = f"data/{self.__class__.__name__}"
         # output_dir = f"data/vdb-s{eta_scale}"
         # output_dir = f"data/vdb-t{theta_scale}"
         if not os.path.exists(output_dir):
             os.mkdir(output_dir)
-        # np.savez(f"{output_dir}/R{seed:03d}", r=v.R)
+        np.savez(f"{output_dir}/{seed:03d}", r=self.model.R, error=self.model.error)
         # plt.show()
-        plt.savefig(f"{output_dir}/fig{self.__name__}{seed:03d}.png")
+        plt.savefig(f"{output_dir}/fig{seed:03d}.png")
         plt.close()
         plt.cla()
-        # p = mu(v.g_z @ theta_star).flatten()
-        # sigma_true = np.sqrt(p * (1 - p))
-        # plt.hist(sigma_true, bins=sigmas, edgecolor='black')
-        # plt.savefig(f"data/vdb-3x/his{seed:03d}.png")
 
     def eta_tl_override(self):
         return False
 
     def L_override(self):
         return False
-
-
-class RND(VDBGLM):
-    def next_action(self):
-        x_i = self.rng.integers(0, K)
-        y_i = self.rng.integers(0, K)
-        return x_i, y_i
-
-
-class MaxInp(VDBGLM):
-    def eta_tl_override(self):
-        # calculation in Saha's paper
-        # eta_tl = (
-        #     1.0 / kappa * np.sqrt(d / 2 * np.log(1 + 2 * t / d / lmbda) + np.log(1 / delta))
-        # )
-        # according to COLSTIM reported value
-        eta_tl = np.sqrt(self.d * np.log(self.T))
-        return eta_tl
-
-    def L_override(self):
-        return True
-
-    def next_action(self) -> None:
-        return super().next_action()
-
-
-class MaxFirstRndNext(MaxInp):
-    def next_action(self) -> None:
-        Dt = self.D.sum(axis=0) == self.L
-        assert np.any(
-            Dt
-        )  # make sure at least one pair is available in every layer to be sampled
-
-        u_hat = self.model.cA @ self.theta[-1]
-        x_i = np.argmax(u_hat * Dt)
-        ii = np.arange(0, K, dtype=np.int32)[Dt]
-        y_i = self.rng.choice(ii)
-        return x_i, y_i
-
-
-if __name__ == "__main__":
-    if len(sys.argv) == 2:
-        seed = int(sys.argv[1])
-    else:
-        seed = 60
-    print("seed", seed)
-
-    # for eta_scale in np.arange(0.004, 0.011, 0.001):
-    T = 5000
-    d = 10
-    K = 50
-    model = LinearLogitModel(T, K, d, seed)
-    # alg_cls = VDBGLM
-    # alg_cls = MaxInp
-    alg_cls = RND
-    alg_cls = MaxFirstRndNext
-    algo = alg_cls(T, model, seed)
-    algo.run()
-    algo.summarize()
