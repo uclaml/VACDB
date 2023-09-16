@@ -19,10 +19,11 @@ if __name__ == "__main__":
 
         seed = time.time() * 1000000
         seed = int(seed)
+        seed = 12345
     print("seed", seed)
 
     # for eta_scale in np.arange(0.004, 0.011, 0.001):
-    T = 40
+    T = 4000
     d = 5
     K = 2**5
     alg_classes = [
@@ -30,19 +31,21 @@ if __name__ == "__main__":
         # MaxFirstMaxDet,
         # MaxDetGreedy,
         # StaticMaxDet,
-        MaxInp,
+        #MaxInp,
         # MaxFirstRndNext,
         # MaxFirstUCBNext,
         # MaxFirstRowMaxNext,
         # MaxFirstRndNextNoMask,
         # MaxPairUCB2,
         # MaxPairUCB,
-        VDBGLM,
+        #VDBGLM,
+        #AdaDBGLM,
         SAVE,
-        AdaDBGLM,
     ]
     for alg_cls in alg_classes:
         model = LinearLogitModel(T, K, d, seed)
         algo = alg_cls(T, model, seed)
         algo.run()
+        print(f"Starting with {alg_cls.__name__}...")
         algo.summarize()
+        print(f"Finished with {alg_cls.__name__}.")

@@ -3,12 +3,14 @@ from db import DB
 from model import Model
 
 import scipy.special
+import matplotlib.pyplot as plt
+
 import os, sys
 dtype = np.float64
 
 
 class AdaDBGLM(DB):
-    def __init__(self, T: int, model: Model, seed: int, L: int = 10) -> None:
+    def __init__(self, T: int, model: Model, seed: int, L: int = 6) -> None:
         super().__init__(T, model, seed)
 
         self.L = L
@@ -90,31 +92,35 @@ class AdaDBGLM(DB):
 
     def MLE(self, l: int = 0) -> None:
         theta_0 = self.theta[l]
+        if((l > 1) and (np.linalg.norm(self.theta[l]) == 0)):
+            theta_0 = self.theta[l-1]
         func = lambda theta: (
-            self.kappa * np.power(2.0, -l) * theta @ theta
-            + (
-                # self.w[l] * self.w[l] *
+            self.kappa * np.power(2.0, -2 * l) * theta @ theta
+            + ( self.w[l] * self.w[l] *(
                 np.log(np.exp(self.z[l] @ theta) + 1)
                 # (self.z[l] @ theta)
                 - self.r[l].reshape(-1, 1) * self.z[l] @ theta
+                )
             ).sum(axis=0)
-            / self.t
+            #/ self.t
         )
         # T T T,d@d, -> T, -  T,1*T,d->T,d * T,d @d -> T
         grad = lambda theta: (
-            2 * self.kappa * np.power(2.0, -l) * theta
+            2 * self.kappa * np.power(2.0, -2*l) * theta
             + (
                 (
-                    # self.w[l] * self.w[l] *
+                    self.w[l] * self.w[l] *(
                     self.model.mu(self.z[l] @ theta)
                     - self.r[l]
+                    )
                 ).reshape(-1, 1)
                 * self.z[l]
             )
             .sum(axis=0)
             .flatten()
-            / self.t
+            #/ self.t
         )
+        #print("I want to see the grad:", grad(theta_0))
 
         # gradient descent
         # for _ in range(50):
@@ -173,10 +179,39 @@ class AdaDBGLM(DB):
             error=self.model.error,
             Lerr=self.model.Lerr,
         )
+        fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 6))
+
+        ax1.plot(self.model.R)
+        # ax1.plot(x, y1, color="blue", label="Sin(x)")
+        # ax1.set_xlabel("X")
+        # ax1.set_ylabel("Y")
+        # ax1.set_title("First Line")
+        # ax1.legend()
+
+        ax2.plot(self.model.error)
+        ax2.set_ylim(0, 1)
+        # ax2.plot(x, y2, color="red", label="Cos(x)")
+        # ax2.set_xlabel("X")
+        # ax2.set_ylabel("Y")
+        # ax2.set_title("Second Line")
+        # ax2.legend()
+
+        # Adjust spacing between subplots
+        plt.tight_layout()
+        output_dir = f"data/{self.__class__.__name__}"
+        # output_dir = f"data/vdb-s{eta_scale}"
+        # output_dir = f"data/vdb-t{theta_scale}"
+        if not os.path.exists(output_dir):
+            os.mkdir(output_dir)
+        np.savez(f"{output_dir}/{seed:03d}", r=self.model.R, error=self.model.error)
+        # plt.show()
+        plt.savefig(f"{output_dir}/fig{seed:03d}.png")
+        plt.close()
+        plt.cla()
 
 
 class SAVE(AdaDBGLM):
-    def __init__(self, T: int, model: Model, seed: int, L: int = 10) -> None:
+    def __init__(self, T: int, model: Model, seed: int, L: int = 7) -> None:
         super().__init__(T, model, seed)
 
         self.L = L
@@ -210,7 +245,7 @@ class SAVE(AdaDBGLM):
             ).reshape(K, K)
 
         self.theta = np.zeros((L + 1, d)) / d
-        self.beta = 1 * np.power(2.0, -np.arange(0, L + 1) + 1)
+        self.beta = 0.1 * np.power(2.0, -np.arange(0, L + 1) + 1)
 
     def estimate(self, r, act):
         K = self.K
@@ -222,11 +257,11 @@ class SAVE(AdaDBGLM):
             return
         x_i, y_i = act
         z = self.model.cA[x_i] - self.model.cA[y_i]
-        w = np.power(2.0, -l) / self.var[l, x_i, y_i]
-        # w = 1
+        w = 1 * np.power(2.0, -l) / self.var[l, x_i, y_i]
+        #w = 1
         print(l, self.beta[l] * self.var[l, x_i, y_i], w, act)
         print(self.xpy[x_i, y_i] @ self.theta[l], self.model.x_star_idx)
-        self.Sigma[l] += np.outer(z, z) * w * w
+        self.Sigma[l] += np.outer(z, z) * w * w * (3.2 ** l) * 0.5
         self.SigmaInv[l] = np.linalg.inv(self.Sigma[l])
         self.var[l] = (
             np.sqrt(
@@ -241,7 +276,7 @@ class SAVE(AdaDBGLM):
         self.w[l] = np.append(self.w[l], w)
         # self.Psi[l] += 1
         self.MLE(l)
-        self.beta[l] = 8 * np.power(2.0, -l) * np.sqrt(np.log(self.t))
+        self.beta[l] = 0.05 * np.power(2.0, -l) * np.sqrt(np.log(self.t))
 
     def next_action(self):
         K = self.K
@@ -252,6 +287,8 @@ class SAVE(AdaDBGLM):
         Dt = [np.ones(K, dtype=np.int64) for _ in range(L + 1)]
         while True:
             mask = Dt[l].reshape(K, 1) * Dt[l].reshape(1, K)
+            print("arm remaining", Dt[l].sum(axis=0))
+            print("best arm still here", Dt[l][12])
             if np.all(mask * self.var[l] <= self.alpha):
                 u_hat = self.model.cA @ self.theta[l]
                 x_plus_y = u_hat + u_hat[:, None]
@@ -270,7 +307,8 @@ class SAVE(AdaDBGLM):
                 if l + 1 <= L:
                     Dt[l + 1] = cond * Dt[l]
             else:
-                sel_mat = mask * self.var[l] > np.power(2.0, -l)
+                sel_mat = mask * self.var[l] 
+                #> np.power(2.0, -l)
                 x_i, y_i = np.unravel_index(np.argmax(sel_mat, axis=None), (K, K))
                 # choices = np.arange(K * K).reshape(K, K)[sel_mat].flatten()
                 # choice = self.rng.choice(choices)
