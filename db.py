@@ -10,10 +10,15 @@ class DB(ABC):
         self.model = model
         self.T = T
 
+        self.error = []
+
     def run(self):
         """
         main loop
         """
+        if self.L:
+            self.error = [[] for _ in range(self.L + 1)]
+
         for t in range(1, 1 + self.T):
             # print(f"{t}", end="\r")
             self.t = t
@@ -22,8 +27,7 @@ class DB(ABC):
             # print(act)
             r = self.model.action(t, act)
             self.estimate(r, act)
-            self.model.record_error(self.theta)
-            # self.model.record_error(self.theta[-1])
+            self.record_error()
 
     @abstractmethod
     def next_action(self):
@@ -38,3 +42,11 @@ class DB(ABC):
         updates model estimation based on new observation and the past
         """
         pass
+
+    def record_error(self):
+        theta = self.theta
+        if self.L:
+            for l in range(self.L + 1):
+                self.error[l].append(np.linalg.norm(self.model.theta_star - theta[l]))
+        else:
+            self.error.append(np.linalg.norm(self.model.theta_star - theta))

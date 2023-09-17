@@ -12,11 +12,12 @@ import glob
 # for alg in ["vdb", "vdb-2x", "vdb-3x", "maxinp", "maxinp-2x", "maxinp-3x"]:
 # for eta_scale in np.arange(0.004, 0.011, 0.001):
 import sys
+
 if len(sys.argv) > 1:
     ss = sys.argv[1]
 else:
-    ss=1
-    
+    ss = 1
+
 fig, (ax1, ax2) = plt.subplots(2, 1)
 fig.set_size_inches(5, 8)
 axes = [ax1, ax2]
@@ -63,35 +64,40 @@ alg_classes = [
     # "MaxPairUCB4",
 ]
 
+
 for alg_cls in alg_classes:
     files = glob.glob(f"data/{alg_cls}/*.npz")
     print(files)
-    rd = lambda x: np.load(open(x, 'rb'))
-    var_names = ['r', 'error']
-    for var_name, ax in zip(var_names, axes):
-        dat = list(map(lambda x: rd(x)[var_name], files))
-        # print(var_name, alg_cls)
-        dat = np.vstack(dat)
-        std = dat.std(axis=0)
-        mean = dat.mean(axis=0)
-        x = np.arange(0, std.shape[0])
-        ax.plot(x, mean, label=alg_cls)
-        ax.fill_between(x=x, y1=mean-std, y2=mean+std, alpha=0.20)
-    if alg_cls == "SAVE":
-        ax = ax2
-        for l in range(6):
-            dat = list(map(lambda x: rd(x)["Lerr"][l], files))
-            # print(var_name, alg_cls)
-            dat = np.vstack(dat)
-            std = dat.std(axis=0)
-            mean = dat.mean(axis=0)
-            x = np.arange(0, std.shape[0])
-            ax.plot(x, mean, label=alg_cls + f" L={l}")
-            ax.fill_between(x=x, y1=mean-std, y2=mean+std, alpha=0.20)
+    rd = lambda x: np.load(open(x, "rb"))
+    stat = lambda dat: (dat.std(axis=0), dat.mean(axis=0))
 
+    def draw_line(ax, dat, L=None):
+        std, mean = stat(np.vstack(dat))
+        x = np.arange(0, std.shape[0])
+        suffix = f" L={L}" if L is not None else ""
+        ax.plot(x, mean, label=alg_cls+suffix)
+        ax.fill_between(x=x, y1=mean - std, y2=mean + std, alpha=0.20)
+
+    # print(alg_cls)
+    dat = list(map(lambda x: rd(x)["r"], files))
+    draw_line(ax1, dat)
+    # print(dat)
+    if alg_cls in ["SAVE"]:
+        ax = ax2
+        L = len(rd(files[0])["error"])
+        for l in range(1, L):
+            dat = list(map(lambda x: rd(x)["error"][l], files))
+            # print(var_name, alg_cls)
+            draw_line(ax2, dat, l)
+    else:
+        dat = list(map(lambda x: rd(x)["error"], files))
+        draw_line(ax2, dat)
+
+
+ax1.legend(loc="upper left", prop={"size": 7})
 ax2.legend(loc="upper right", prop={"size": 7})
-fig_name = f"n=128,d=5K=32{ss}-saveL.png"
-plt.savefig(fig_name, bbox_inches='tight')
+fig_name = f"n=128,d=5,K=32{ss}-saveL.png"
+plt.savefig(fig_name, bbox_inches="tight")
 
 # import os
 # os.system(f"pdfcrop {fig_name} {fig_name} > /dev/null")

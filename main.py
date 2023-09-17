@@ -4,6 +4,7 @@ from vdb import VDBGLM
 from ucb import MaxInp, MaxFirstUCBNext, MaxFirstRndNext
 from suplin import AdaDBGLM, SAVE
 
+
 class RND(VDBGLM):
     def next_action(self):
         x_i = self.rng.integers(0, K)
@@ -31,21 +32,19 @@ if __name__ == "__main__":
         # MaxFirstMaxDet,
         # MaxDetGreedy,
         # StaticMaxDet,
-        #MaxInp,
+        # MaxInp,
         # MaxFirstRndNext,
         # MaxFirstUCBNext,
         # MaxFirstRowMaxNext,
-        # MaxFirstRndNextNoMask,
-        # MaxPairUCB2,
         # MaxPairUCB,
-        #VDBGLM,
-        #AdaDBGLM,
+        # VDBGLM,
+        # AdaDBGLM,
         SAVE,
     ]
     for alg_cls in alg_classes:
         model = LinearLogitModel(T, K, d, seed)
         algo = alg_cls(T, model, seed)
+        print(f"Starting with {alg_cls.__name__}..")
         algo.run()
-        print(f"Starting with {alg_cls.__name__}...")
         algo.summarize()
         print(f"Finished with {alg_cls.__name__}.")

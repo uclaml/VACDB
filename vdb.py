@@ -214,6 +214,7 @@ class VDBGLM(DB):
         print(np.linalg.norm(self.theta - self.model.theta_star, axis=1))
         print("Number of sample per layer", self.Psi)
         # print("layer boundaries", sigmas)
+        print("acutal max", (self.model.x_star_idx), "last pair", self.next_action())
 
         fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(8, 6))
 
@@ -224,13 +225,19 @@ class VDBGLM(DB):
         # ax1.set_title("First Line")
         # ax1.legend()
 
-        ax2.plot(self.model.error)
-        ax2.set_ylim(0, 1)
+        if self.L > 3:
+            for l in range(1, self.L + 1):
+                suffix = f" L={l}"
+                x = np.arange(0, len(self.error[l]))
+                ax2.plot(x, self.error[l], label=suffix)
+        else:
+            ax2.plot(self.error)
         # ax2.plot(x, y2, color="red", label="Cos(x)")
         # ax2.set_xlabel("X")
         # ax2.set_ylabel("Y")
         # ax2.set_title("Second Line")
-        # ax2.legend()
+        ax2.set_ylim(0, 1)
+        ax2.legend()
 
         # Adjust spacing between subplots
         plt.tight_layout()
@@ -239,7 +246,7 @@ class VDBGLM(DB):
         # output_dir = f"data/vdb-t{theta_scale}"
         if not os.path.exists(output_dir):
             os.mkdir(output_dir)
-        np.savez(f"{output_dir}/{seed:03d}", r=self.model.R, error=self.model.error)
+        np.savez(f"{output_dir}/{seed:03d}", r=self.model.R, error=self.error)
         # plt.show()
         plt.savefig(f"{output_dir}/fig{seed:03d}.png")
         plt.close()

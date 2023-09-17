@@ -31,15 +31,14 @@ class LinearLogitModel(Model):
         self.K = K
         self.d = d
         self.seed = seed
+        self.data_rng = np.random.default_rng(23333)
         self.rng = np.random.default_rng(seed)
         self.mu = scipy.special.expit
         # self.R = np.zeros((T + 1), dtype=dtype)
         self.R = []
-        self.error = []
-        self.Lerr = [[] for _ in range(10)]
 
         # generate a random ground truth parameter and normalize it
-        theta_star = self.rng.random((d,), dtype=dtype)
+        theta_star = self.data_rng.random((d,), dtype=dtype)
         theta_star = (theta_star > 0.5).astype(np.int64) * 2.0 - 1
 
         self.theta_star = theta_star / np.sqrt(theta_star @ theta_star)
@@ -48,7 +47,7 @@ class LinearLogitModel(Model):
 
         # generate feature vectors for arms
         # it is random binary vectors with disturbance
-        x_orig = self.rng.integers(0, 2**d, size=(K,), dtype=np.int32)  # [0, 2^d)
+        x_orig = self.data_rng.integers(0, 2**d, size=(K,), dtype=np.int32)  # [0, 2^d)
         x_orig = np.arange(K)
         # cA[0:K//4] += rng.random((K//4, d)) * 2
 
@@ -104,9 +103,3 @@ class LinearLogitModel(Model):
         else:
             self.R.append(R_t)
         return r
-
-    def record_error(self, theta):
-        self.error.append(np.linalg.norm(self.theta_star - theta))
-        max_l = min(10, len(theta))
-        for l in range(max_l):
-            self.Lerr[l].append(np.linalg.norm(self.theta_star - theta[l]))
