@@ -82,7 +82,7 @@ class AdaDBGLM(VDBGLM):
         w = np.power(2.0, -l) / self.var[l, x_i, y_i]
         # print(l, self.beta[l] * self.var[l, x_i, y_i], w, act)
         # print(self.xpy[x_i, y_i] @ self.theta[l], self.model.x_star_idx)
-        self.Sigma[l] += np.outer(z, z) * w * w * (2**l) * 12
+        self.Sigma[l] += np.outer(z, z) * w * w * (2**l) * 60
         self.SigmaInv[l] = np.linalg.inv(self.Sigma[l])
         self.var[l] = (
             np.sqrt(
@@ -97,7 +97,7 @@ class AdaDBGLM(VDBGLM):
         self.w[l] = np.append(self.w[l], w)
         self.Psi[l] += 1
         self.MLE(l)
-        self.beta[l] = 0.5 * np.power(2.0, -l) * np.sqrt(np.log(self.T))
+        self.beta[l] = 0.05 * np.power(2.0, -l) * np.sqrt(np.log(self.T))
 
     def MLE(self, l: int = 0) -> None:
         theta_0 = self.theta[l]
@@ -184,14 +184,14 @@ class SAVE(AdaDBGLM):
                 cb = self.var[l]
                 eta_tl = self.beta[l]
                 cond = x_plus_y + eta_tl * cb
-                cond[~mask] = -11111111
+                cond[mask < 1] = -11111111
                 x_i, y_i = np.unravel_index(np.argmax(cond, axis=None), (K, K))
                 self.l = None
                 # print("best", x_i, y_i)
                 break
             elif np.all(mask * self.var[l] <= np.power(2.0, -l)):
                 u_hat = self.model.cA @ self.theta[l]
-                u_hat_max = np.max(u_hat[Dt[l]])
+                u_hat_max = np.max(u_hat[Dt[l] > 0])
                 cond = u_hat - u_hat_max + np.power(2.0, -l) * self.beta[l] >= 0
                 if l + 1 <= L:
                     Dt[l + 1] = cond * Dt[l]
