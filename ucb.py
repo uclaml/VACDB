@@ -54,7 +54,7 @@ class MaxFirstRndNext(MaxInp):
 
         u_hat = self.model.cA @ self.theta[-1]
         x_i = np.argmax(u_hat * Dt)
-        ii = np.arange(0, K, dtype=np.int32)[Dt]
+        ii = np.arange(0, self.K, dtype=np.int32)[Dt]
         y_i = self.rng.choice(ii)
         # print(x_i, y_i)
         return x_i, y_i

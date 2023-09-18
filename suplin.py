@@ -11,7 +11,7 @@ dtype = np.float64
 
 
 class AdaDBGLM(VDBGLM):
-    def __init__(self, T: int, model: Model, seed: int, L: int = 7) -> None:
+    def __init__(self, T: int, model: Model, seed: int, L: int = 3) -> None:
         super().__init__(T, model, seed)
 
         self.L = L
@@ -67,6 +67,7 @@ class AdaDBGLM(VDBGLM):
                 # change beta?
                 return
         else:
+            #ADsaDBLM
             l = 1
             while l <= self.L:
                 if self.var[l, act[0], act[1]] >= np.power(2.0, -l):
@@ -81,7 +82,7 @@ class AdaDBGLM(VDBGLM):
         w = np.power(2.0, -l) / self.var[l, x_i, y_i]
         # print(l, self.beta[l] * self.var[l, x_i, y_i], w, act)
         # print(self.xpy[x_i, y_i] @ self.theta[l], self.model.x_star_idx)
-        self.Sigma[l] += np.outer(z, z) * w * w * (3.2**l) * 0.5
+        self.Sigma[l] += np.outer(z, z) * w * w * (2**l) * 12
         self.SigmaInv[l] = np.linalg.inv(self.Sigma[l])
         self.var[l] = (
             np.sqrt(
@@ -96,7 +97,7 @@ class AdaDBGLM(VDBGLM):
         self.w[l] = np.append(self.w[l], w)
         self.Psi[l] += 1
         self.MLE(l)
-        self.beta[l] = 0.01 * np.power(2.0, -l) * np.sqrt(np.log(self.T))
+        self.beta[l] = 0.5 * np.power(2.0, -l) * np.sqrt(np.log(self.T))
 
     def MLE(self, l: int = 0) -> None:
         theta_0 = self.theta[l]
@@ -164,6 +165,7 @@ class AdaDBGLM(VDBGLM):
         # print(x_i, y_i)
         return x_i, y_i
 
+
 class SAVE(AdaDBGLM):
     def next_action(self):
         K = self.K
@@ -194,14 +196,13 @@ class SAVE(AdaDBGLM):
                 if l + 1 <= L:
                     Dt[l + 1] = cond * Dt[l]
             else:
-                sel_mat = mask * self.var[l]
-                # > np.power(2.0, -l)
+                sel_mat = mask * self.var[l] > np.power(2.0, -l)
+                # depth first explore
                 x_i, y_i = np.unravel_index(np.argmax(sel_mat, axis=None), (K, K))
+                # uniform explore: breadth first
                 # choices = np.arange(K * K).reshape(K, K)[sel_mat].flatten()
                 # choice = self.rng.choice(choices)
-                # x_i, y_i = np.unravel_index(
-                #     choice, (K, K)
-                # )
+                # x_i, y_i = np.unravel_index(choice, (K, K))
                 self.l = l
                 break
             l = l + 1

@@ -27,23 +27,30 @@ for ax, ylabel in zip(axes, ["Regret(t)", "Est. Error"]):
     ax.ticklabel_format(axis="y", scilimits=[0, 2])
     ax.grid(True)
     fig.tight_layout()
-# ax1.set_ylim([-1, 10000])
+ax1.set_ylim([-1, 10000])
 # ax1.set_yscale('log')
 ax2.set_ylim(0, 1)
 
-alg_classes = [
+single_algs = [
     # "VDBGLM",
     "MaxInp",
     # "RND",
-    # "MaxFirstRndNext",
+    "MaxFirstRndNext",
     # "MaxFirstRowMaxNext",
     # "MaxFirstUCBNext2",
-    # "MaxFirstUCBNext",
+    "MaxFirstUCBNext",
     # "MaxFirstMaxDet",
     # "MaxDetGreedy",
     # "StaticMaxDet"
-    # "MaxPairUCB",
-    "SAVE",
+    "MaxPairUCB",
+    # "SAVE L=3 bfs",
+    # "SAVE L=3 dfs",
+    # "SAVE L=3",
+    # "SAVE L=4",
+    # "SAVE L=5",
+    # "SAVE L=6",
+    # "SAVE L=7",
+    # "SAVE L=8",
     # "MaxPairUCB1p6",
     # "MaxPairUCB1p5",
     # "MaxPairUCB1p1",
@@ -64,10 +71,20 @@ alg_classes = [
     # "MaxPairUCB4",
 ]
 
+alg_classes = []
+if len(sys.argv) >=2:
+    scale = sys.argv[1] 
+else:
+    scale = 1
+print("scale", scale)
+for L in range(3, 9):
+    alg_classes.append(f"SAVE L={L} scale={scale}")
+for alg_cls in single_algs:
+    alg_classes.append(alg_cls + f" scale={scale}")
 
 for alg_cls in alg_classes:
     files = glob.glob(f"data/{alg_cls}/*.npz")
-    print(files)
+    print(len(files), files[-1])
     rd = lambda x: np.load(open(x, "rb"))
     stat = lambda dat: (dat.std(axis=0), dat.mean(axis=0))
 
@@ -75,7 +92,7 @@ for alg_cls in alg_classes:
         std, mean = stat(np.vstack(dat))
         x = np.arange(0, std.shape[0])
         suffix = f" L={L}" if L is not None else ""
-        ax.plot(x, mean, label=alg_cls+suffix)
+        ax.plot(x, mean, label=alg_cls + suffix)
         ax.fill_between(x=x, y1=mean - std, y2=mean + std, alpha=0.20)
 
     # print(alg_cls)
@@ -96,7 +113,7 @@ for alg_cls in alg_classes:
 
 ax1.legend(loc="upper left", prop={"size": 7})
 ax2.legend(loc="upper right", prop={"size": 7})
-fig_name = f"n=128,d=5,K=32{ss}-saveL.png"
+fig_name = f"n=128,d=5,K=32{ss}-manyL_{scale}.png"
 plt.savefig(fig_name, bbox_inches="tight")
 
 # import os

@@ -203,7 +203,7 @@ class VDBGLM(DB):
         )
         return x_i, y_i
 
-    def summarize(self):
+    def summarize(self, suffix=""):
         seed = self.model.seed
         np.set_printoptions(precision=6, suppress=True)
         print("--Ground Truth-------")
@@ -225,13 +225,16 @@ class VDBGLM(DB):
         # ax1.set_title("First Line")
         # ax1.legend()
 
-        if self.L > 3:
+        if self.L >= 3:
             for l in range(1, self.L + 1):
-                suffix = f" L={l}"
+                legend_suffix = f" L={l}"
                 x = np.arange(0, len(self.error[l]))
-                ax2.plot(x, self.error[l], label=suffix)
+                ax2.plot(x, self.error[l], label=legend_suffix)
         else:
-            ax2.plot(self.error)
+            print(len(self.error))
+            print(len(self.error[0]))
+            x = np.arange(0, len(self.error[-1]))
+            ax2.plot(x, self.error[-1], label="Single Layer")
         # ax2.plot(x, y2, color="red", label="Cos(x)")
         # ax2.set_xlabel("X")
         # ax2.set_ylabel("Y")
@@ -241,7 +244,7 @@ class VDBGLM(DB):
 
         # Adjust spacing between subplots
         plt.tight_layout()
-        output_dir = f"data/{self.__class__.__name__}"
+        output_dir = f"data/{self.__class__.__name__}" + suffix
         # output_dir = f"data/vdb-s{eta_scale}"
         # output_dir = f"data/vdb-t{theta_scale}"
         if not os.path.exists(output_dir):

@@ -1,7 +1,7 @@
 import sys
 from model import LinearLogitModel
 from vdb import VDBGLM
-from ucb import MaxInp, MaxFirstUCBNext, MaxFirstRndNext
+from ucb import MaxInp, MaxFirstUCBNext, MaxFirstRndNext, MaxPairUCB
 from suplin import AdaDBGLM, SAVE
 
 
@@ -20,7 +20,7 @@ if __name__ == "__main__":
 
         seed = time.time() * 1000000
         seed = int(seed)
-        seed = 12345
+        # seed = 12345
     print("seed", seed)
 
     # for eta_scale in np.arange(0.004, 0.011, 0.001):
@@ -32,19 +32,29 @@ if __name__ == "__main__":
         # MaxFirstMaxDet,
         # MaxDetGreedy,
         # StaticMaxDet,
-        # MaxInp,
-        # MaxFirstRndNext,
-        # MaxFirstUCBNext,
+        MaxInp,
+        MaxFirstRndNext,
+        MaxFirstUCBNext,
         # MaxFirstRowMaxNext,
-        # MaxPairUCB,
+        MaxPairUCB,
         # VDBGLM,
         # AdaDBGLM,
-        SAVE,
+        # SAVE,
     ]
-    for alg_cls in alg_classes:
-        model = LinearLogitModel(T, K, d, seed)
-        algo = alg_cls(T, model, seed)
-        print(f"Starting with {alg_cls.__name__}..")
-        algo.run()
-        algo.summarize()
-        print(f"Finished with {alg_cls.__name__}.")
+    todo_list = list(zip(alg_classes, [None] * len(alg_classes)))
+    for l in range(3, 9):
+        todo_list.append((SAVE, l))
+    for scale in [0.1, 0.5, 1, 2, 4]:
+        for alg_cls, l in todo_list:
+            model = LinearLogitModel(T, K, d, seed, scale=scale)
+            if l:
+                algo = alg_cls(T, model, seed, L=l)
+                suffix = f" L={l}"
+            else:
+                algo = alg_cls(T, model, seed)
+                suffix = ""
+            suffix += f" scale={scale}"
+            print(f"Starting with {alg_cls.__name__}..")
+            algo.run()
+            algo.summarize(suffix)
+            print(f"Finished with {alg_cls.__name__}.")
