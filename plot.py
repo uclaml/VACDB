@@ -27,7 +27,7 @@ for ax, ylabel in zip(axes, ["Regret(t)", "Est. Error"]):
     ax.ticklabel_format(axis="y", scilimits=[0, 2])
     ax.grid(True)
     fig.tight_layout()
-ax1.set_ylim([-1, 10000])
+ax1.set_ylim([-1, 3000])
 # ax1.set_yscale('log')
 ax2.set_ylim(0, 1)
 
@@ -43,53 +43,30 @@ single_algs = [
     # "MaxDetGreedy",
     # "StaticMaxDet"
     "MaxPairUCB",
-    # "SAVE L=3 bfs",
-    # "SAVE L=3 dfs",
-    # "SAVE L=3",
-    # "SAVE L=4",
-    # "SAVE L=5",
-    # "SAVE L=6",
-    # "SAVE L=7",
-    # "SAVE L=8",
-    # "MaxPairUCB1p6",
-    # "MaxPairUCB1p5",
-    # "MaxPairUCB1p1",
-    # "MaxPairUCB1p3",
-    # "MaxPairUCB2",
-    # "MaxPairUCB4",
-    # "MaxPairUCBdiv4",
-    # "MaxPairUCBdiv2",
-    # "MaxPairUCBd4m",
-    # "MaxPairUCBd2m",
-    # "MaxPairUCB1m",
-    # "MaxPairUCB2m",
-    # "MaxPairUCB4m",
-    # "MaxPairUCBd4",
-    # "MaxPairUCBd2",
-    # "MaxPairUCB1",
-    # "MaxPairUCB2",
-    # "MaxPairUCB4",
 ]
 
 alg_classes = []
 if len(sys.argv) >=2:
     scale = sys.argv[1] 
 else:
-    scale = 1
+    scale = 2
 print("scale", scale)
-for L in range(3, 9):
+for L in range(3, 5):
     alg_classes.append(f"SAVE L={L} scale={scale}")
 for alg_cls in single_algs:
     alg_classes.append(alg_cls + f" scale={scale}")
 
 for alg_cls in alg_classes:
     files = glob.glob(f"data/{alg_cls}/*.npz")
+    print(alg_cls)
     print(len(files), files[-1])
     rd = lambda x: np.load(open(x, "rb"))
     stat = lambda dat: (dat.std(axis=0), dat.mean(axis=0))
 
     def draw_line(ax, dat, L=None):
         std, mean = stat(np.vstack(dat))
+        std /= float(scale)
+        mean /= float(scale)
         x = np.arange(0, std.shape[0])
         suffix = f" L={L}" if L is not None else ""
         ax.plot(x, mean, label=alg_cls + suffix)
@@ -113,7 +90,7 @@ for alg_cls in alg_classes:
 
 ax1.legend(loc="upper left", prop={"size": 7})
 ax2.legend(loc="upper right", prop={"size": 7})
-fig_name = f"n=128,d=5,K=32{ss}-manyL_{scale}.png"
+fig_name = f"n=128,d=5,K=32-manyL_{scale}.png"
 plt.savefig(fig_name, bbox_inches="tight")
 
 # import os

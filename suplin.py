@@ -82,7 +82,7 @@ class AdaDBGLM(VDBGLM):
         w = np.power(2.0, -l) / self.var[l, x_i, y_i]
         # print(l, self.beta[l] * self.var[l, x_i, y_i], w, act)
         # print(self.xpy[x_i, y_i] @ self.theta[l], self.model.x_star_idx)
-        self.Sigma[l] += np.outer(z, z) * w * w * (2**l) * 60
+        self.Sigma[l] += np.outer(z, z) * w * w
         self.SigmaInv[l] = np.linalg.inv(self.Sigma[l])
         self.var[l] = (
             np.sqrt(
@@ -97,7 +97,7 @@ class AdaDBGLM(VDBGLM):
         self.w[l] = np.append(self.w[l], w)
         self.Psi[l] += 1
         self.MLE(l)
-        self.beta[l] = 0.05 * np.power(2.0, -l) * np.sqrt(np.log(self.T))
+        self.beta[l] = np.power(2.0, -l) * np.sqrt(np.log(self.T)) / self.model.scale
 
     def MLE(self, l: int = 0) -> None:
         theta_0 = self.theta[l]

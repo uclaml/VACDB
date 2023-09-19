@@ -40,7 +40,7 @@ class LinearLogitModel(Model):
 
         # generate a random ground truth parameter and normalize it
         theta_star = self.data_rng.random((d,), dtype=dtype)
-        theta_star = (theta_star > 0.5).astype(np.int64) * 2.0 - 1
+        # theta_star = (theta_star > 0.5).astype(np.int64) * 2.0 - 1
 
         self.theta_star = theta_star / np.sqrt(theta_star @ theta_star)
         self.theta_star *= self.scale
