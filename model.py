@@ -4,7 +4,7 @@ import scipy.special
 import scipy.spatial
 import scipy.optimize
 
-dtype = np.float64
+DTYPE = np.float64
 
 
 class Model(ABC):
@@ -25,8 +25,6 @@ class Model(ABC):
 
 class LinearLogitModel(Model):
     def __init__(self, T, K, d, seed, scale=1) -> None:
-        super().__init__()
-
         self.T = T
         self.K = K
         self.d = d
@@ -34,12 +32,11 @@ class LinearLogitModel(Model):
         self.data_rng = np.random.default_rng(23333)
         self.rng = np.random.default_rng(seed)
         self.mu = scipy.special.expit
-        # self.R = np.zeros((T + 1), dtype=dtype)
         self.R = []
         self.scale = scale
 
         # generate a random ground truth parameter and normalize it
-        theta_star = self.data_rng.random((d,), dtype=dtype)
+        theta_star = self.data_rng.random((d,), dtype=DTYPE)
         # theta_star = (theta_star > 0.5).astype(np.int64) * 2.0 - 1
 
         self.theta_star = theta_star / np.sqrt(theta_star @ theta_star)
@@ -48,8 +45,10 @@ class LinearLogitModel(Model):
 
         # generate feature vectors for arms
         # it is random binary vectors with disturbance
-        x_orig = self.data_rng.integers(0, 2**d, size=(K,), dtype=np.int32)  # [0, 2^d)
-        x_orig = np.arange(K)
+        # x_orig = self.data_rng.integers(
+        #     0, 2**d, size=(K,), dtype=np.int32
+        # )  # [0, 2^d)
+        x_orig = np.arange(K, dtype=np.int32)
         # cA[0:K//4] += rng.random((K//4, d)) * 2
 
         # norm_samples = self.rng.normal(size=(1, d))

@@ -1,25 +1,23 @@
 import numpy as np
-from vdb import VDBGLM
-
-dtype = np.float64
+from vdb import LCDB
 
 
-class MaxInp(VDBGLM):
-    def eta_scale(self):
+class MaxInp(LCDB):
+    def beta_scale(self):
         return 2
 
-    def eta_tl_override(self):
-        # calculation in Saha's paper
-        # eta_tl = (
+    def beta_tl_override(self):
+        # theorectial value in Saha's paper
+        # beta_tl = (
         # 1.0 / kappa * np.sqrt(d / 2 * np.log(1 + 2 * t / d / lmbda) + np.log(1 / delta))
         # )
         # according to COLSTIM reported value
-        if self.eta_scale():
-            scale = self.eta_scale()
-        eta_tl = np.sqrt(self.d * np.log(self.T)) * scale
-        return eta_tl
+        if self.beta_scale():
+            scale = self.beta_scale()
+        beta_tl = np.sqrt(self.d * np.log(self.T)) * scale
+        return beta_tl
 
-    def L_override(self):
+    def single_layer(self):
         return True
 
     def next_action(self) -> None:
@@ -28,7 +26,7 @@ class MaxInp(VDBGLM):
 
 class MaxFirstUCBNext(MaxInp):
     def next_action(self) -> None:
-        Dt = self.D.sum(axis=0) == self.L
+        Dt = self.D[1:].sum(axis=0) == self.L
         assert np.any(
             Dt
         )  # make sure at least one pair is available in every layer to be sampled
@@ -37,17 +35,17 @@ class MaxFirstUCBNext(MaxInp):
         x_i = np.argmax(u_hat * Dt)
 
         mask = Dt.reshape(-1, 1) * Dt.reshape(1, -1)
-        Lvar = self.var
+        Lvar = self.enorm
         cb = Lvar.min(axis=0)
-        eta_tl = self.eta_tl_override()
-        y_i = np.argmax(u_hat + eta_tl * cb[x_i])
+        beta_tl = self.beta_tl_override()
+        y_i = np.argmax(u_hat + beta_tl * cb[x_i])
         # print(x_i, y_i)
         return x_i, y_i
 
 
 class MaxFirstRndNext(MaxInp):
     def next_action(self) -> None:
-        Dt = self.D.sum(axis=0) == self.L
+        Dt = self.D[1:].sum(axis=0) == self.L
         assert np.any(
             Dt
         )  # make sure at least one pair is available in every layer to be sampled
@@ -55,7 +53,7 @@ class MaxFirstRndNext(MaxInp):
         u_hat = self.model.cA @ self.theta[-1]
         x_i = np.argmax(u_hat * Dt)
         ii = np.arange(0, self.K, dtype=np.int32)[Dt]
-        y_i = self.rng.choice(ii)
+        y_i = self.model.rng.choice(ii)
         # print(x_i, y_i)
         return x_i, y_i
 
@@ -70,19 +68,19 @@ class MaxFirstRowMaxNext(MaxInp):
         u_hat = self.model.cA @ self.theta[-1]
         x_i = np.argmax(u_hat * Dt)
         mask = Dt.reshape(-1, 1) * Dt.reshape(1, -1)
-        Lvar = self.var + 1
+        Lvar = self.enorm + 1
         y_i = np.argmax(Lvar.min(axis=0)[x_i] * Dt)
         # sel = mask * Lvar.min(axis=0)
         return x_i, y_i
 
 
 class MaxPairUCB(MaxInp):
-    def L_override(self):
+    def single_layer(self):
         return True
 
     def next_action(self) -> None:
         K = self.K
-        Dt = self.D.sum(axis=0) == self.L
+        Dt = self.D[1:].sum(axis=0) == self.L
         assert np.any(
             Dt
         )  # make sure at least one pair is available in every layer to be sampled
@@ -95,11 +93,11 @@ class MaxPairUCB(MaxInp):
         # return x_i, y_i
 
         # mask = Dt.reshape(-1, 1) * Dt.reshape(1, -1)
-        Lvar = self.var
+        Lvar = self.enorm
         cb = Lvar.min(axis=0)
-        eta_tl = self.eta_tl_override()
+        beta_tl = self.beta_tl_override()
         x_i, y_i = np.unravel_index(
-            np.argmax((x_plus_y + eta_tl * cb), axis=None), (K, K)
+            np.argmax((x_plus_y + beta_tl * cb), axis=None), (K, K)
         )
         # ii = np.arange(0, K, dtype=np.int32)[Dt]
         # y_i = self.rng.choice(ii)
@@ -108,5 +106,5 @@ class MaxPairUCB(MaxInp):
 
 
 class MaxPairUCB2(MaxPairUCB):
-    def eta_scale(self):
+    def beta_scale(self):
         return 0.5

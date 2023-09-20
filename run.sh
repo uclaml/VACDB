@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name="test"
+#SBATCH --job-name="v3"
 #SBATCH --ntasks 1            # -n
 #SBATCH --cpus-per-task=1     # -c
 #SBATCH --ntasks-per-node=1   # 
@@ -20,5 +20,5 @@ source ~/.bashrc
 mamba activate nrm
 # Execute the MPI program
 # srun --mpi=pmix python3 mapreduce.py
-# taskset --cpu-list $1 \
- python3 main.py
+# taskset --cpu-list $1 python3 main.py
+srun python3 main.py $SLURM_ARRAY_TASK_ID

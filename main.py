@@ -1,29 +1,27 @@
-import sys
+import os, sys
+import time
 from model import LinearLogitModel
-from vdb import VDBGLM
+from vdb import LCDB
 from ucb import MaxInp, MaxFirstUCBNext, MaxFirstRndNext, MaxPairUCB
-from suplin import AdaDBGLM, SAVE
+from suplin import AdaCDB, StaAdaCDB
 
 
-class RND(VDBGLM):
+class RND(LCDB):
     def next_action(self):
-        x_i = self.rng.integers(0, K)
-        y_i = self.rng.integers(0, K)
+        x_i = self.model.rng.integers(0, K)
+        y_i = self.model.rng.integers(0, K)
         return x_i, y_i
 
 
 if __name__ == "__main__":
+    array_id = getattr(os.environ, "SLURM_ARRAY_TASK_ID", None)
     if len(sys.argv) == 2:
         seed = int(sys.argv[1])
+    elif array_id:
+        seed = int(array_id)
     else:
-        import time
+        seed = int(time.time() * 1000000)
 
-        seed = time.time() * 1000000
-        seed = int(seed)
-        # seed = 12345
-    print("seed", seed)
-
-    # for eta_scale in np.arange(0.004, 0.011, 0.001):
     T = 2000
     d = 5
     K = 2**5
@@ -35,26 +33,25 @@ if __name__ == "__main__":
         # MaxInp,
         # MaxFirstRndNext,
         # MaxFirstUCBNext,
-        # MaxFirstRowMaxNext,
         # MaxPairUCB,
-        # VDBGLM,
-        # AdaDBGLM,
-        # SAVE,
     ]
     todo_list = list(zip(alg_classes, [None] * len(alg_classes)))
-    for l in range(3, 5):
-        todo_list.append((SAVE, l))
-    for scale in [0.1, 0.5, 1, 2, 4]:
+    for l in range(1, 4):
+        # todo_list.append((LCDB, l))
+        # todo_list.append((AdaCDB, l))
+        todo_list.append((StaAdaCDB, l))
+        pass
+    for scale in [0.1, 0.5, 1, 2, 4][2:3]:
         for alg_cls, l in todo_list:
             model = LinearLogitModel(T, K, d, seed, scale=scale)
             if l:
-                algo = alg_cls(T, model, seed, L=l)
+                algo = alg_cls(T, model, L=l)
                 suffix = f" L={l}"
             else:
-                algo = alg_cls(T, model, seed)
+                algo = alg_cls(T, model, L=1)
                 suffix = ""
             suffix += f" scale={scale}"
-            print(f"Starting with {alg_cls.__name__}..")
+            print(f"Starting with {alg_cls.__name__} {l if l else 0}..")
             algo.run()
             algo.summarize(suffix)
             print(f"Finished with {alg_cls.__name__}.")

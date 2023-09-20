@@ -26,7 +26,7 @@ class MaxFirstMaxDet(MaxInp):
         sigma_g = self.model.mu(self.g_z @ self.theta[0])  # K x K
         scale_g = sigma_g * (1 - sigma_g)
         fim = np.sum(
-            (scale_g * self.count).reshape(K, K, 1, 1) * self.g_z_outer, axis=(0, 1)
+            (scale_g * self.count_xy).reshape(K, K, 1, 1) * self.g_z_outer, axis=(0, 1)
         )
         det = np.linalg.det(fim)
 
@@ -42,8 +42,8 @@ class MaxFirstMaxDet(MaxInp):
                         x_i, y_i = (i, j)
                         max_det = det_ij
 
-        self.count[x_i, y_i] += 1
-        self.count[y_i, x_i] += 1
+        self.count_xy[x_i, y_i] += 1
+        self.count_xy[y_i, x_i] += 1
         return x_i, y_i
 
 
@@ -59,7 +59,7 @@ class MaxDetGreedy(MaxInp):
         sigma_g = self.model.mu(self.g_z @ self.theta[0])  # K x K
         scale_g = sigma_g * (1 - sigma_g)
         fim = np.sum(
-            (scale_g * self.count).reshape(K, K, 1, 1) * self.g_z_outer, axis=(0, 1)
+            (scale_g * self.count_xy).reshape(K, K, 1, 1) * self.g_z_outer, axis=(0, 1)
         )
         det = np.linalg.det(fim)
 
@@ -74,8 +74,8 @@ class MaxDetGreedy(MaxInp):
                         x_i, y_i = (i, j)
                         max_det = det_ij
 
-        self.count[x_i, y_i] += 1
-        self.count[y_i, x_i] += 1
+        self.count_xy[x_i, y_i] += 1
+        self.count_xy[y_i, x_i] += 1
         return x_i, y_i
 
 

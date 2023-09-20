@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import glob
 
 # for alg in ["vdb", "vdb-2x", "vdb-3x", "maxinp", "maxinp-2x", "maxinp-3x"]:
-# for eta_scale in np.arange(0.004, 0.011, 0.001):
+# for beta_scale in np.arange(0.004, 0.011, 0.001):
 import sys
 
 if len(sys.argv) > 1:
@@ -27,12 +27,12 @@ for ax, ylabel in zip(axes, ["Regret(t)", "Est. Error"]):
     ax.ticklabel_format(axis="y", scilimits=[0, 2])
     ax.grid(True)
     fig.tight_layout()
-ax1.set_ylim([-1, 3000])
+# ax1.set_ylim([-1, 3000])
 # ax1.set_yscale('log')
 ax2.set_ylim(0, 1)
 
 single_algs = [
-    # "VDBGLM",
+    # "LCDB",
     "MaxInp",
     # "RND",
     "MaxFirstRndNext",
@@ -46,13 +46,13 @@ single_algs = [
 ]
 
 alg_classes = []
-if len(sys.argv) >=2:
-    scale = sys.argv[1] 
+if len(sys.argv) >= 2:
+    scale = sys.argv[1]
 else:
     scale = 2
 print("scale", scale)
-for L in range(3, 5):
-    alg_classes.append(f"SAVE L={L} scale={scale}")
+for L in range(2, 4):
+    alg_classes.append(f"StaAdaCDB L={L} scale={scale}")
 for alg_cls in single_algs:
     alg_classes.append(alg_cls + f" scale={scale}")
 
@@ -76,7 +76,7 @@ for alg_cls in alg_classes:
     dat = list(map(lambda x: rd(x)["r"], files))
     draw_line(ax1, dat)
     # print(dat)
-    if alg_cls in ["SAVE"]:
+    if alg_cls in ["StaAdaCDB"]:
         ax = ax2
         L = len(rd(files[0])["error"])
         for l in range(1, L):
