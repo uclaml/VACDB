@@ -71,7 +71,7 @@ class DB(ABC):
             # print(act)
             r = self.model.action(t, act)
             self.estimate(r, act)
-            self.record_error()
+            self.record_error(act)
 
     @abstractmethod
     def next_action(self):
@@ -87,9 +87,13 @@ class DB(ABC):
         """
         pass
 
-    def record_error(self):
+    def record_error(self, act):
         theta = self.theta
-        for l in range(self.L + 1):
+        x_i, y_i = act
+        z = self.model.cA[x_i] - self.model.cA[y_i]
+        self.error[0].append(self.model.mu(self.model.theta_star @ z))
+
+        for l in range(1, self.L + 1):
             self.error[l].append(
                 np.linalg.norm(self.model.theta_star - theta[l]) / self.model.scale
             )

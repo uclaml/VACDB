@@ -30,10 +30,10 @@ if __name__ == "__main__":
         # MaxFirstMaxDet,
         # MaxDetGreedy,
         # StaticMaxDet,
-        # MaxInp,
+        MaxInp,
         # MaxFirstRndNext,
         # MaxFirstUCBNext,
-        # MaxPairUCB,
+        MaxPairUCB,
     ]
     todo_list = list(zip(alg_classes, [None] * len(alg_classes)))
     for l in range(1, 4):

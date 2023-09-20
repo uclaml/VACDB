@@ -190,15 +190,15 @@ class LCDB(DB):
         # print("layer boundaries", sigmas)
         print("acutal max", (self.model.x_star_idx), "last pair", self.next_action())
 
-        fig = plt.figure(constrained_layout=True, figsize=(12, 9))
-        (fig1, fig2, fig3) = fig.subfigures(3, 1)
+        fig = plt.figure(constrained_layout=True, figsize=(12, 8))
+        (fig1, fig2) = fig.subfigures(2, 1, wspace=0.07, height_ratios=[2, 1])
 
-        ax1 = fig1.subplots(1, 1)
+        fig1subs = fig1.subplots(1, 2)
+        ax1, ax2 = fig1subs
         ax1.plot(self.model.R)
         ax1.set_xlabel("Time")
         ax1.set_ylabel("Regret(t)")
 
-        ax2 = fig2.subplots(1, 1)
         if self.L >= 2:
             for l in range(1, self.L + 1):
                 legend_suffix = f" L={l}"
@@ -207,16 +207,20 @@ class LCDB(DB):
         else:
             print(len(self.error))
             print(len(self.error[0]))
-            x = np.arange(0, len(self.error[-1]))
-            ax2.plot(x, self.error[-1], label="Single Layer")
+            x = np.arange(0, len(self.error[1]))
+            ax2.plot(x, self.error[1], label="Single Layer")
+        ax2.plot(x, np.abs(np.array(self.error[0]) - 0.5), label="|p_xy - 0.5|")
         ax2.set_ylim(0, 1)
         ax2.legend()
 
-        axes = fig3.subplots(1, 4)
+        axes = fig2.subplots(1, 5)
         axes[0].matshow(np.log((1 + self.count_xy)))
         axes[0].set_title("Global counts")
-        for l in range(1, min(self.L + 1, 6)):
-            axes[l].matshow(np.log((1 + self.count_xyL[l])))
+        for l in range(1, 5):
+            if l <= self.L:
+                axes[l].matshow(np.log((1 + self.count_xyL[l])))
+            else:
+                axes[l].matshow(np.zeros((self.K, self.K)))
             axes[l].set_title(f"Layer {l} counts")
 
         plt.tight_layout()
