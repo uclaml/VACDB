@@ -15,6 +15,11 @@ class DB(ABC):
         self.model = model
         self.error = None
 
+        self.lmbda = 0.001
+        self.kappa = 0.1
+        self.L_mu = 0.25
+        # self.M_mu = 0.25
+
         self.d = model.d
         self.K = model.K
         d = self.d

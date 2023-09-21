@@ -8,15 +8,8 @@ import scipy.optimize
 import matplotlib.pyplot as plt
 
 import glob
-
-# for alg in ["vdb", "vdb-2x", "vdb-3x", "maxinp", "maxinp-2x", "maxinp-3x"]:
-# for beta_scale in np.arange(0.004, 0.011, 0.001):
 import sys
 
-if len(sys.argv) > 1:
-    ss = sys.argv[1]
-else:
-    ss = 1
 
 fig, (ax1, ax2) = plt.subplots(2, 1)
 fig.set_size_inches(5, 8)
@@ -35,10 +28,10 @@ single_algs = [
     # "LCDB",
     "MaxInp",
     # "RND",
-    "MaxFirstRndNext",
+    # "MaxFirstRndNext",
     # "MaxFirstRowMaxNext",
     # "MaxFirstUCBNext2",
-    "MaxFirstUCBNext",
+    # "MaxFirstUCBNext",
     # "MaxFirstMaxDet",
     # "MaxDetGreedy",
     # "StaticMaxDet"
@@ -51,8 +44,8 @@ if len(sys.argv) >= 2:
 else:
     scale = 2
 print("scale", scale)
-for L in range(2, 4):
-    alg_classes.append(f"StaAdaCDB L={L} scale={scale}")
+for l in range(5, 6):
+    alg_classes.append(f"StaAdaCDB L={12} scale={scale}")
 for alg_cls in single_algs:
     alg_classes.append(alg_cls + f" scale={scale}")
 

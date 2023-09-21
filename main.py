@@ -22,7 +22,7 @@ if __name__ == "__main__":
     else:
         seed = int(time.time() * 1000000)
 
-    T = 2000
+    T = 4000
     d = 5
     K = 2**5
     alg_classes = [
@@ -35,11 +35,12 @@ if __name__ == "__main__":
         # MaxFirstUCBNext,
         MaxPairUCB,
     ]
+    # why #L does not make difference?
     todo_list = list(zip(alg_classes, [None] * len(alg_classes)))
-    for l in range(1, 4):
+    for l in range(5, 6):
         # todo_list.append((LCDB, l))
         # todo_list.append((AdaCDB, l))
-        todo_list.append((StaAdaCDB, l))
+        # todo_list.append((StaAdaCDB, 12))
         pass
     for scale in [0.1, 0.5, 1, 2, 4][2:3]:
         for alg_cls, l in todo_list:

@@ -19,11 +19,6 @@ class LCDB(DB):
         L = self.L
         d = self.d
 
-        self.lmbda = 0.001
-        self.kappa = 0.1
-        self.L_mu = 0.25
-        # self.M_mu = 0.25
-
         self.Sigma = np.zeros((L + 1, d, d), dtype=DTYPE) + np.eye(d) * self.lmbda
         self.SigmaInv = (
             1.0 / self.lmbda * np.zeros((L + 1, d, d), dtype=DTYPE)

@@ -69,7 +69,29 @@ class AdaCDB(LCDB):
         self.w[l] = np.append(self.w[l], w)
         self.Psi[l] += 1
         self.MLE(l)
+
+        log_t1Ldl = np.log(4 * (self.t + 1) ** 2 * self.L / self.delta)
+        log_tLdl = np.log(4 * (self.t) ** 2 * self.L / self.delta)
+        Var_tl = self.Psi[l]
+        if np.power(2.0, l) >= 64 * self.L_mu / self.kappa * np.sqrt(log_t1Ldl):
+            Var_tl = (
+                np.power(
+                    self.w[l]
+                    * self.w[l]
+                    * (self.model.mu(self.z[l] @ self.theta) - self.r[l]),
+                    2,
+                ).reshape(-1, 1)
+            ).sum(axis=0)
+        inner = (Var_tl * 8 + 18 * log_t1Ldl) * log_tLdl
+        self.beta_t[l] = (
+            16 * np.power(2.0, -l) * np.sqrt(inner) / self.kappa / 500
+            + 6 * np.power(2.0, -l) / self.kappa * log_tLdl / 100
+            + np.power(2.0, -l + 1)
+        )
+        # print(Var_tl, np.sqrt(inner), log_t1Ldl, log_tLdl, self.beta_t[l])
+
         self.beta_t[l] = np.power(2.0, -l) * np.sqrt(np.log(self.T)) / self.model.scale
+
         self.count_xyL[l, x_i, y_i] += 1
         self.count_xy[x_i, y_i] += 1
 

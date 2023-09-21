@@ -7,9 +7,14 @@ class MaxInp(LCDB):
         return 2
 
     def beta_tl_override(self):
-        # theorectial value in Saha's paper
+        # according to theorectial value in Saha's paper
         # beta_tl = (
-        # 1.0 / kappa * np.sqrt(d / 2 * np.log(1 + 2 * t / d / lmbda) + np.log(1 / delta))
+        #     1.0
+        #     / self.kappa
+        #     * np.sqrt(
+        #         self.d / 2 * np.log(1 + 2 * self.t / self.d / self.lmbda)
+        #         + np.log(1 / self.delta)
+        #     )
         # )
         # according to COLSTIM reported value
         if self.beta_scale():
