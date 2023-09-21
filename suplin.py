@@ -170,16 +170,16 @@ class StaAdaCDB(AdaCDB):
                 cond = u_hat - u_hat_max + np.power(2.0, -l) * self.beta_t[l] >= 0
                 if l + 1 <= L:
                     Dt[l + 1] = cond * Dt[l]
+                l = l + 1
             else:
                 sel_mat = mask * self.enorm[l] > np.power(2.0, -l)
                 # depth first explore
-                x_i, y_i = np.unravel_index(np.argmax(sel_mat, axis=None), (K, K))
+                # x_i, y_i = np.unravel_index(np.argmax(sel_mat, axis=None), (K, K))
                 # uniform explore: breadth first
-                # choices = np.arange(K * K).reshape(K, K)[sel_mat].flatten()
-                # choice = self.model.rng.choice(choices)
-                # x_i, y_i = np.unravel_index(choice, (K, K))
+                choices = np.arange(K * K).reshape(K, K)[sel_mat].flatten()
+                choice = self.model.rng.choice(choices)
+                x_i, y_i = np.unravel_index(choice, (K, K))
                 self.l = l
                 break
-            l = l + 1
 
         return x_i, y_i
