@@ -20,7 +20,7 @@ for ax, ylabel in zip(axes, ["Regret(t)", "Est. Error"]):
     ax.ticklabel_format(axis="y", scilimits=[0, 2])
     ax.grid(True)
     fig.tight_layout()
-# ax1.set_ylim([-1, 3000])
+ax1.set_ylim([-1, 3000])
 # ax1.set_yscale('log')
 ax2.set_ylim(0, 1)
 
@@ -45,9 +45,11 @@ else:
     scale = 2
 print("scale", scale)
 for l in range(5, 6):
-    alg_classes.append(f"StaAdaCDB L={12} scale={scale}")
+    alg_classes.append(f"StaAdaCDB L={l} scale={scale}")
+    pass
 for alg_cls in single_algs:
     alg_classes.append(alg_cls + f" scale={scale}")
+    pass
 
 for alg_cls in alg_classes:
     files = glob.glob(f"data/{alg_cls}/*.npz")

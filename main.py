@@ -40,7 +40,7 @@ if __name__ == "__main__":
     for l in range(5, 6):
         # todo_list.append((LCDB, l))
         # todo_list.append((AdaCDB, l))
-        # todo_list.append((StaAdaCDB, 12))
+        todo_list.append((StaAdaCDB, l))
         pass
     for scale in [0.1, 0.5, 1, 2, 4][2:3]:
         for alg_cls, l in todo_list:

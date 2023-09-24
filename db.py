@@ -4,7 +4,7 @@ import numpy as np
 from model import Model, DTYPE
 
 
-class DB(ABC):
+class GLMDB(ABC):
     """
     abstract class for Dueling Bandit
     """
@@ -15,9 +15,11 @@ class DB(ABC):
         self.model = model
         self.error = None
 
+        # regularization
         self.lmbda = 0.001
+        # glm parameter
         self.kappa = 0.1
-        self.L_mu = 0.25
+        # self.L_mu = 1
         # self.M_mu = 0.25
 
         self.d = model.d
@@ -29,9 +31,8 @@ class DB(ABC):
         self.g_z_outer = self.model.g_z_outer
 
         # L = int(np.ceil(np.log2(1.0 / 2 / self.alpha)))
-        # quick hack for non layered methods
-        if self.single_layer():
-            L = 1
+        if L == 0:
+            raise ValueError("L should be at least 1")
         self.L = L
         self.alpha = 1.0 / (2**L)
 
@@ -100,11 +101,12 @@ class DB(ABC):
 
     def record_error(self, act):
         theta = self.theta
-        x_i, y_i = act
-        z = self.model.cA[x_i] - self.model.cA[y_i]
-        self.error[0].append(self.model.mu(self.model.theta_star @ z))
+        # # save actual probability
+        # x_i, y_i = act
+        # z = self.model.cA[x_i] - self.model.cA[y_i]
+        # self.error[0].append(self.model.mu(self.model.theta_star @ z))
 
-        for l in range(1, self.L + 1):
+        for l in range(0, self.L + 1):
             self.error[l].append(
                 np.linalg.norm(self.model.theta_star - theta[l]) / self.model.scale
             )

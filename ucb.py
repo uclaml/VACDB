@@ -3,10 +3,13 @@ from vdb import LCDB
 
 
 class MaxInp(LCDB):
+    def get_l_t(self):
+        return 1
+
     def beta_scale(self):
         return 2
 
-    def beta_tl_override(self):
+    def get_beta_tl(self):
         # according to theorectial value in Saha's paper
         # beta_tl = (
         #     1.0
@@ -22,56 +25,48 @@ class MaxInp(LCDB):
         beta_tl = np.sqrt(self.d * np.log(self.T)) * scale
         return beta_tl
 
-    def single_layer(self):
-        return True
-
     def next_action(self) -> None:
-        return super().next_action()
+        K = self.K
+        Dt = self.D[1]
+
+        mask = Dt.reshape(-1, 1) * Dt.reshape(1, -1)
+        Lvar = (
+            self.enorm[1] + 1
+        )  # increase each value by 1, so those out of feasible set will be not be selected in argmax since those are 0
+        # sel = mask * Lvar.min(axis=0)
+        x_i, y_i = np.unravel_index(np.argmax(mask * Lvar, axis=None), (K, K))
+        return x_i, y_i
 
 
 class MaxFirstUCBNext(MaxInp):
     def next_action(self) -> None:
-        Dt = self.D[1:].sum(axis=0) == self.L
-        assert np.any(
-            Dt
-        )  # make sure at least one pair is available in every layer to be sampled
-
-        u_hat = self.model.cA @ self.theta[-1]
+        Dt = self.D[1]
+        u_hat = self.model.cA @ self.theta[1]
         x_i = np.argmax(u_hat * Dt)
 
-        mask = Dt.reshape(-1, 1) * Dt.reshape(1, -1)
-        Lvar = self.enorm
-        cb = Lvar.min(axis=0)
-        beta_tl = self.beta_tl_override()
-        y_i = np.argmax(u_hat + beta_tl * cb[x_i])
+        beta_tl = self.get_beta_tl()
+        y_i = np.argmax(u_hat + beta_tl * self.enorm[1][x_i])
         # print(x_i, y_i)
         return x_i, y_i
 
 
 class MaxFirstRndNext(MaxInp):
     def next_action(self) -> None:
-        Dt = self.D[1:].sum(axis=0) == self.L
-        assert np.any(
-            Dt
-        )  # make sure at least one pair is available in every layer to be sampled
-
-        u_hat = self.model.cA @ self.theta[-1]
+        Dt = self.D[1]
+        u_hat = self.model.cA @ self.theta[1]
         x_i = np.argmax(u_hat * Dt)
+
         ii = np.arange(0, self.K, dtype=np.int32)[Dt]
         y_i = self.model.rng.choice(ii)
-        # print(x_i, y_i)
         return x_i, y_i
 
 
 class MaxFirstRowMaxNext(MaxInp):
     def next_action(self) -> None:
-        Dt = self.D.sum(axis=0) == self.L
-        assert np.any(
-            Dt
-        )  # make sure at least one pair is available in every layer to be sampled
-
-        u_hat = self.model.cA @ self.theta[-1]
+        Dt = self.D[1]
+        u_hat = self.model.cA @ self.theta[1]
         x_i = np.argmax(u_hat * Dt)
+
         mask = Dt.reshape(-1, 1) * Dt.reshape(1, -1)
         Lvar = self.enorm + 1
         y_i = np.argmax(Lvar.min(axis=0)[x_i] * Dt)
@@ -80,36 +75,13 @@ class MaxFirstRowMaxNext(MaxInp):
 
 
 class MaxPairUCB(MaxInp):
-    def single_layer(self):
-        return True
-
     def next_action(self) -> None:
-        K = self.K
-        Dt = self.D[1:].sum(axis=0) == self.L
-        assert np.any(
-            Dt
-        )  # make sure at least one pair is available in every layer to be sampled
-
-        u_hat = self.model.cA @ self.theta[-1]
+        Dt = self.D[1]
+        u_hat = self.model.cA @ self.theta[1]
         x_plus_y = u_hat + u_hat[:, None]
-        # x_i = np.argmax(u_hat * Dt)
-        # ii = np.arange(0, K, dtype=np.int32)[Dt]
-        # y_i = self.rng.choice(ii)
-        # return x_i, y_i
+        beta_tl = self.get_beta_tl()
 
-        # mask = Dt.reshape(-1, 1) * Dt.reshape(1, -1)
-        Lvar = self.enorm
-        cb = Lvar.min(axis=0)
-        beta_tl = self.beta_tl_override()
         x_i, y_i = np.unravel_index(
-            np.argmax((x_plus_y + beta_tl * cb), axis=None), (K, K)
+            np.argmax((x_plus_y + beta_tl * self.enorm[1]), axis=None), (self.K, self.K)
         )
-        # ii = np.arange(0, K, dtype=np.int32)[Dt]
-        # y_i = self.rng.choice(ii)
-        # print(x_i, y_i)
         return x_i, y_i
-
-
-class MaxPairUCB2(MaxPairUCB):
-    def beta_scale(self):
-        return 0.5
