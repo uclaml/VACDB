@@ -72,7 +72,13 @@ class DB(ABC):
             # print(f"{t}", end="\r")
             self.t = t
             # model can also change
-            act = self.next_action()
+            # warm up test
+            if t <= 0:
+                x_i = self.model.rng.integers(0, self.K)
+                y_i = self.model.rng.integers(0, self.K)
+                act = (x_i, y_i)
+            else:
+                act = self.next_action()
             # print(act)
             r = self.model.action(t, act)
             self.estimate(r, act)
