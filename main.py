@@ -3,7 +3,7 @@ import time
 from model import LinearLogitModel
 from vdb import LCDB
 from ucb import MaxInP, MaxFirstUCBNext, CoLSTIM, MaxFirstRndNext, MaxPairUCB
-from suplin import AdaCDB, StaAdaCDB, StaD
+from suplin import AdaCDB, VACDB, StaD
 
 
 class RND(LCDB):
@@ -48,7 +48,7 @@ if __name__ == "__main__":
     for l in range(5, 6):
         # todo_list.append((LCDB, l))
         # todo_list.append((AdaCDB, l))
-        # todo_list.append((StaAdaCDB, l))
+        # todo_list.append((VACDB, l))
         # todo_list.append((StaD, l))
         pass
     for scale in [0.1, 0.5, 1, 2, 4][2:3]:

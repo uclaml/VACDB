@@ -46,7 +46,7 @@ else:
     scale = 2
 print("scale", scale)
 for l in range(5, 6):
-    # alg_classes.append(f"StaAdaCDB L={l} scale={scale}")
+    # alg_classes.append(f"VACDB L={l} scale={scale}")
     # alg_classes.append(f"StaD L={l} scale={scale}")
     pass
 for alg_cls in single_algs:
@@ -73,7 +73,7 @@ for alg_cls in alg_classes:
     dat = list(map(lambda x: rd(x)["r"], files))
     draw_line(ax1, dat)
     # print(dat)
-    if alg_cls in ["StaAdaCDB"]:
+    if alg_cls in ["VACDB"]:
         ax = ax2
         L = len(rd(files[0])["error"])
         for l in range(1, L):

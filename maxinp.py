@@ -65,7 +65,7 @@ class VDBGLM:
         )
         grad = lambda theta: (
             # 2 * kappa * lmbda * theta
-            + (
+            +(
                 (mu(self.xy_diff[l] @ theta) - self.r[l]).reshape(-1, 1)
                 * self.xy_diff[l]
             )
@@ -132,7 +132,7 @@ class VDBGLM:
             x_i, y_i = np.unravel_index(
                 np.argmax(mask * Lvar.min(axis=0), axis=None), (K, K)
             )
-            
+
             # mask = Dt.reshape(-1, 1) * Dt.reshape(1, -1)
             # mask = mask.astype(dtype) - np.eye(K)
             # Lvar = var - 1000
@@ -206,6 +206,6 @@ print(np.linalg.norm(v.theta - theta_star, axis=1))
 # plt.savefig("sigma-bar-true-005.png")
 
 plt.plot(v.R[1:])
-np.savez(f"data/maxinp-3x/R{seed:03d}", r=v.R)
+np.savez(f"data/MaxInP-3x/R{seed:03d}", r=v.R)
 # plt.show()
-plt.savefig(f"data/maxinp-3x/minfig{seed:03d}.png")
+plt.savefig(f"data/MaxInP-3x/minfig{seed:03d}.png")

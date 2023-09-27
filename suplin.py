@@ -8,7 +8,7 @@ import scipy.special
 class AdaCDB(LCDB):
     def init_sigma(self):
         self.beta_hist = [[] for _ in range(self.L + 1)]
-        
+
         d = self.d
         K = self.K
         L = self.L
@@ -177,13 +177,13 @@ class AdaCDB(LCDB):
         return x_i, y_i
 
 
-class StaAdaCDB(AdaCDB):
+class VACDB(AdaCDB):
     def __init__(self, T: int, model: Model, L: int) -> None:
         super().__init__(T, model, L)
         self.l = 1
 
     def get_l_t(self, _) -> (bool, int):
-        # StaAdaCDB
+        # VACDB
         # TODO: pass l as argument?
         # reached the top most layer
         if self.l > self.L:
@@ -237,7 +237,8 @@ class StaAdaCDB(AdaCDB):
 
         return x_i, y_i
 
-class StaD(StaAdaCDB):
+
+class StaD(VACDB):
     def estimate(self, r, act):
         stop, l = self.get_l_t(act)
         if stop:
