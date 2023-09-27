@@ -1,7 +1,7 @@
 import numpy as np
 from db import DB
 from model import Model
-from ucb import MaxInp
+from ucb import MaxInP
 
 dtype = np.float64
 import itertools
@@ -12,7 +12,7 @@ def generate_combinations(vector, r):
     return combinations
 
 
-class MaxFirstMaxDet(MaxInp):
+class MaxFirstMaxDet(MaxInP):
     def next_action(self) -> None:
         K = self.K
         Dt = self.D.sum(axis=0) == self.L
@@ -47,7 +47,7 @@ class MaxFirstMaxDet(MaxInp):
         return x_i, y_i
 
 
-class MaxDetGreedy(MaxInp):
+class MaxDetGreedy(MaxInP):
     def next_action(self) -> None:
         K = self.K
         Dt = self.D.sum(axis=0) == self.L
@@ -79,7 +79,7 @@ class MaxDetGreedy(MaxInp):
         return x_i, y_i
 
 
-class StaticMaxDet(MaxInp):
+class StaticMaxDet(MaxInP):
     def __init__(self, T: int, model: Model, seed: int) -> None:
         super().__init__(T, model, seed)
         self.find_max_comb()

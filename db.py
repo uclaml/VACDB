@@ -43,7 +43,7 @@ class GLMDB(ABC):
         self.z = [np.zeros((0, d), dtype=DTYPE) for _ in range(L + 1)]
         self.r = [np.array([], dtype=DTYPE) for _ in range(L + 1)]
         self.w = [np.array([], dtype=DTYPE) for _ in range(L + 1)]
-        self.D = np.ones((L + 1, K), dtype=DTYPE)  # feasible set
+        self.D = np.ones((L + 1, K), dtype=DTYPE).astype(np.bool_)  # feasible set
         self.Psi = np.zeros((L + 1))  # sample count in each layer
         self.count_xy = np.zeros((K, K))
         self.count_xyL = np.zeros((L + 1, K, K))

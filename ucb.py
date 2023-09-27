@@ -2,7 +2,7 @@ import numpy as np
 from vdb import LCDB
 
 
-class MaxInp(LCDB):
+class MaxInP(LCDB):
     def get_l_t(self):
         return 1
 
@@ -25,7 +25,7 @@ class MaxInp(LCDB):
         beta_tl = np.sqrt(self.d * np.log(self.T)) * scale
         return beta_tl
 
-    def next_action(self) -> None:
+    def next_action(self) -> (int, int):
         K = self.K
         Dt = self.D[1]
 
@@ -38,8 +38,8 @@ class MaxInp(LCDB):
         return x_i, y_i
 
 
-class MaxFirstUCBNext(MaxInp):
-    def next_action(self) -> None:
+class MaxFirstUCBNext(MaxInP):
+    def next_action(self) -> (int, int):
         Dt = self.D[1]
         u_hat = self.model.cA @ self.theta[1]
         x_i = np.argmax(u_hat * Dt)
@@ -50,8 +50,40 @@ class MaxFirstUCBNext(MaxInp):
         return x_i, y_i
 
 
-class MaxFirstRndNext(MaxInp):
-    def next_action(self) -> None:
+class CoLSTIM(MaxInP):
+    # def beta_scale(self):
+    #     return 2
+
+    def next_action(self) -> (int, int):
+        T = self.T
+        d = self.d
+        K = self.K
+        # tau_0 = self.d * self.K
+        threshold = np.sqrt(d * np.log(T))
+        p_t = lambda x: np.minimum(1.0, d / (np.sqrt(x)) * np.log(d * T))
+        B_t = self.model.rng.binomial(1, p_t(self.t))
+        eps = self.model.rng.gumbel(size=(K,))
+        # print(eps)
+        if B_t:
+            eps[:] = eps[0]
+        eps = np.minimum(threshold, np.maximum(-threshold, eps))
+
+        # Dt = self.D[1]
+        u_hat = self.model.cA @ self.theta[1]
+        enorm_x = np.sqrt(
+            (self.model.cA.reshape(K, 1, d) @ self.SigmaInv[1])
+            @ self.model.cA.reshape(K, d, 1)
+        ).reshape(K)
+        x_i = np.argmax(u_hat + eps * enorm_x)
+        beta_tl = self.get_beta_tl()
+        y_i = np.argmax(self.g_z[:, x_i] @ self.theta[1] + beta_tl * self.enorm[1][x_i])
+        # y_i = np.argmax(u_hat + beta_tl * self.enorm[1][x_i])
+
+        return x_i, y_i
+
+
+class MaxFirstRndNext(MaxInP):
+    def next_action(self) -> (int, int):
         Dt = self.D[1]
         u_hat = self.model.cA @ self.theta[1]
         x_i = np.argmax(u_hat * Dt)
@@ -61,7 +93,7 @@ class MaxFirstRndNext(MaxInp):
         return x_i, y_i
 
 
-class MaxFirstRowMaxNext(MaxInp):
+class MaxFirstRowMaxNext(MaxInP):
     def next_action(self) -> None:
         Dt = self.D[1]
         u_hat = self.model.cA @ self.theta[1]
@@ -74,7 +106,7 @@ class MaxFirstRowMaxNext(MaxInp):
         return x_i, y_i
 
 
-class MaxPairUCB(MaxInp):
+class MaxPairUCB(MaxInP):
     def next_action(self) -> None:
         Dt = self.D[1]
         u_hat = self.model.cA @ self.theta[1]

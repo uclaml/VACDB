@@ -42,7 +42,7 @@ class AdaCDB(LCDB):
         return stop, l
 
     def get_beta_tl(self):
-        return np.sqrt(self.d * np.log(self.T)) * 2 / 2
+        return np.sqrt(self.d * np.log(self.T)) * 2 / 8
 
     def get_beta_tl_theory(self, l):
         log_t1Ldl = np.log(4 * (self.t + 1) ** 2 * self.L / self.delta)

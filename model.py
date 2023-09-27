@@ -86,6 +86,14 @@ class LinearLogitModel(Model):
         u = self.mu(self.cA @ self.theta_star)
         self.x_star_idx = np.argmax(u)
 
+        # cA[self.x_star_idx] *= 1.2
+        # self.cA = cA
+        # g_z = cA.reshape(K, 1, d) - cA.reshape(1, K, d)
+        # self.g_z_outer = g_z.reshape(K, K, d, 1) @ g_z.reshape(K, K, 1, d)
+        # self.p = self.mu(g_z @ self.theta_star)
+        # self.g_z = g_z
+
+
     def action(self, t, act):
         x_i, y_i = act
         r = self.rng.binomial(1, self.p[x_i, y_i])

@@ -26,11 +26,12 @@ ax2.set_ylim(0, 1)
 
 single_algs = [
     # "LCDB",
-    "MaxInp",
+    "MaxInP",
     # "RND",
     # "MaxFirstRndNext",
     # "MaxFirstRowMaxNext",
     # "MaxFirstUCBNext2",
+    "CoLSTIM",
     # "MaxFirstUCBNext",
     # "MaxFirstMaxDet",
     # "MaxDetGreedy",
@@ -45,7 +46,8 @@ else:
     scale = 2
 print("scale", scale)
 for l in range(5, 6):
-    alg_classes.append(f"StaAdaCDB L={l} scale={scale}")
+    # alg_classes.append(f"StaAdaCDB L={l} scale={scale}")
+    # alg_classes.append(f"StaD L={l} scale={scale}")
     pass
 for alg_cls in single_algs:
     alg_classes.append(alg_cls + f" scale={scale}")
