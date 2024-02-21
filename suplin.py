@@ -238,7 +238,10 @@ class VACDB(AdaCDB):
         return x_i, y_i
 
 
-class StaD(VACDB):
+class StaDSim(VACDB):
+    def get_beta_tl(self):
+        return super().get_beta_tl() * 8
+
     def estimate(self, r, act):
         stop, l = self.get_l_t(act)
         if stop:
@@ -260,3 +263,53 @@ class StaD(VACDB):
 
         self.count_xyL[l, x_i, y_i] += 1
         self.count_xy[x_i, y_i] += 1
+
+
+class StaD(StaDSim):
+    def __init__(self, T: int, model: Model, L: int) -> None:
+        L = 10
+        super().__init__(T, model, L)
+        self.alpha = 1.0 / np.sqrt(self.T)
+
+    # def get_beta_tl(self):
+    #     return np.sqrt(self.d * np.log(self.T)) * 2
+
+    def next_action(self):
+        K = self.K
+        d = self.d
+        L = self.L
+
+        l = 1
+        # \cG_t
+        Dt = [np.ones(K, dtype=np.int64) for _ in range(L + 1)]
+        while True:
+            mask = Dt[l].reshape(K, 1) * Dt[l].reshape(1, K)
+            # print("arm remaining", Dt[l].sum(axis=0))
+            # print("best arm still here", Dt[l][12])
+            if np.all(mask * self.enorm[l] <= self.alpha / self.beta_t[l]):
+                u_hat = self.model.cA @ self.theta[l]
+                x_i = np.argmax(u_hat * Dt[l])
+                y_i = np.argmax((u_hat + self.beta_t[l] * self.enorm[l][x_i]) * Dt[l])
+
+                self.l = l + 1
+                # print("best", x_i, y_i)
+                break
+            elif np.all(mask * self.enorm[l] <= np.power(2.0, -l)):
+                u_hat = self.model.cA @ self.theta[l]
+                u_hat_max = np.max(u_hat[Dt[l] > 0])
+                cond = u_hat - u_hat_max + np.power(2.0, -l) * self.beta_t[l] >= 0
+                if l + 1 <= L:
+                    Dt[l + 1] = cond * Dt[l]
+                l = l + 1
+            else:
+                sel_mat = mask * self.enorm[l] > np.power(2.0, -l)
+                # depth first explore
+                # x_i, y_i = np.unravel_index(np.argmax(sel_mat, axis=None), (K, K))
+                # uniform explore: breadth first
+                choices = np.arange(K * K).reshape(K, K)[sel_mat].flatten()
+                choice = self.model.rng.choice(choices)
+                x_i, y_i = np.unravel_index(choice, (K, K))
+                self.l = l
+                break
+
+        return x_i, y_i

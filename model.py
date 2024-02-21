@@ -29,14 +29,18 @@ class LinearLogitModel(Model):
         self.K = K
         self.d = d
         self.seed = seed
-        self.data_rng = np.random.default_rng(23333)
-        self.rng = np.random.default_rng(seed)
+        self.data_rng = np.random.default_rng(seed + 1000)
+        self.rng = np.random.default_rng(seed + 1000)
         self.mu = scipy.special.expit
         self.R = []
         self.scale = scale
 
         # generate a random ground truth parameter and normalize it
         theta_star = self.data_rng.random((d,), dtype=DTYPE)
+        mask = np.zeros_like(theta_star)
+        mask[:2] = 1
+        theta_star *= mask
+        # self.theta_star = np.ones(d) * 2.39936
         # theta_star = (theta_star > 0.5).astype(np.int64) * 2.0 - 1
 
         self.theta_star = theta_star / np.sqrt(theta_star @ theta_star)
@@ -50,7 +54,8 @@ class LinearLogitModel(Model):
         # )  # [0, 2^d)
         x_orig = np.arange(K, dtype=np.int32)
         # cA[0:K//4] += rng.random((K//4, d)) * 2
-
+        # self.rng.shuffle(x_orig)
+        # print(x_orig)
         # norm_samples = self.rng.normal(size=(1, d))
         # norm_samples /= np.sqrt(np.sum(norm_samples ** 2, axis=1))
         # rad_1 = 0
@@ -61,8 +66,10 @@ class LinearLogitModel(Model):
         cA = (
             (x_orig.reshape(-1, 1) & (2 ** np.arange(d))) != 0
         ) * 2.0 - 1.0  # convert to binary vectors
+        # cA = np.zeros_like(cA)
+        # cA[:, 0] = x_orig
         # print(cA)
-        # cA += (self.rng.random(cA.shape) - 1) / 10  # add some disturb with mean 0
+        cA += (self.rng.random(cA.shape) - 1) / 10  # add some disturb with mean 0
         # cA = self.rng.random((K, d)) - 0.5 # completely random
         self.cA = cA
         # self.cA = self.rng.uniform(0, 1, size=(K, d))
@@ -93,7 +100,6 @@ class LinearLogitModel(Model):
         # self.p = self.mu(g_z @ self.theta_star)
         # self.g_z = g_z
 
-
     def action(self, t, act):
         x_i, y_i = act
         r = self.rng.binomial(1, self.p[x_i, y_i])
@@ -111,3 +117,33 @@ class LinearLogitModel(Model):
         else:
             self.R.append(R_t)
         return r
+
+
+class EventDS(LinearLogitModel):
+    def __init__(self, T, K, d, seed, scale=1) -> None:
+        self.T = T
+        self.K = K
+        self.d = d
+        self.seed = seed
+        self.data_rng = np.random.default_rng(seed + 1000)
+        self.rng = np.random.default_rng(seed + 1000)
+        self.mu = scipy.special.expit
+        self.R = []
+        self.scale = scale
+
+        ds = np.load("data/events_lm_infer.npz")
+        self.theta_star = ds["theta"]
+
+        self.theta_star *= self.scale
+        # print(self.theta_star)
+
+        cA = ds["cA"]
+        self.cA = cA
+
+        g_z = cA.reshape(K, 1, d) - cA.reshape(1, K, d)
+        self.g_z_outer = g_z.reshape(K, K, d, 1) @ g_z.reshape(K, K, 1, d)
+        self.p = self.mu(g_z @ self.theta_star)
+        self.g_z = g_z
+
+        u = self.mu(self.cA @ self.theta_star)
+        self.x_star_idx = np.argmax(u)

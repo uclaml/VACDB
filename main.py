@@ -3,10 +3,11 @@ import time
 from model import LinearLogitModel
 from vdb import LCDB
 from ucb import MaxInP, MaxFirstUCBNext, CoLSTIM, MaxFirstRndNext, MaxPairUCB
-from suplin import AdaCDB, VACDB, StaD
+from suplin import AdaCDB, VACDB, StaD, StaDSim
+from det import MaxScalarFishPair, ETC, MaxInpFish
 
 
-class RND(LCDB):
+class RND(MaxInP):
     def next_action(self):
         x_i = self.model.rng.integers(0, K)
         y_i = self.model.rng.integers(0, K)
